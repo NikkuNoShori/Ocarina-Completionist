@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { sb } from "../lib/supabase";
+import { reportError } from "../lib/errors";
 import { ls } from "../lib/storage";
 import type { Settings } from "../lib/types";
 
 const sysDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
 
-/** Theme, light/dark and spacing: kept in this browser and, when signed in, on the account. */
+/**
+ * Theme, light/dark and spacing: kept in this browser and, when signed in, on the account.
+ * Sync failures are logged but not shown: the settings still work in this browser.
+ */
 export function useSettings(user: User | null, activeSaveId: string | null) {
   const [settings, setSettings] = useState<Settings>({
     theme: ls.get("oot-skin", "kokiri"),
@@ -28,8 +32,9 @@ export function useSettings(user: User | null, activeSaveId: string | null) {
     if (!user) { setSyncedUser(null); loading.current = null; return; }
     if (loading.current === user.id) return;
     loading.current = user.id;
-    sb.from("user_settings").select("theme,mode,density").eq("user_id", user.id).maybeSingle().then(({ data }) => {
-      if (data) setSettings({ theme: data.theme, mode: data.mode, density: data.density });
+    sb.from("user_settings").select("theme,mode,density").eq("user_id", user.id).maybeSingle().then(({ data, error }) => {
+      if (error) reportError("load settings", error);
+      else if (data) setSettings({ theme: data.theme, mode: data.mode, density: data.density });
       setSyncedUser(user.id);
     });
   }, [user]);
@@ -40,7 +45,7 @@ export function useSettings(user: User | null, activeSaveId: string | null) {
     const t = setTimeout(() => {
       sb.from("user_settings")
         .upsert({ user_id: user.id, ...settings, active_save_id: activeSaveId, updated_at: new Date().toISOString() })
-        .then(() => {});
+        .then(({ error }) => { if (error) reportError("save settings", error); });
     }, 500);
     return () => clearTimeout(t);
   }, [user, syncedUser, settings, activeSaveId]);

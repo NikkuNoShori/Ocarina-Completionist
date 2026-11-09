@@ -39,8 +39,3 @@ export function ConfirmButton({ label, confirmLabel, onConfirm, className }: { l
   useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), 4000); return () => clearTimeout(t); }, [armed]);
   return <button className={className ?? "linkbtn danger"} onClick={() => { if (armed) { setArmed(false); onConfirm(); } else setArmed(true); }}>{armed ? confirmLabel : label}</button>;
 }
-
-export function Toast({ msg }: { msg: { text: string; err?: boolean } | null }) {
-  if (!msg) return null;
-  return <div className={"toast" + (msg.err ? " err" : "")} role="status">{msg.text}</div>;
-}

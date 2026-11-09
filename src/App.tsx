@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useReference } from "./hooks/useReference";
 import { hasGuestData, useSaves } from "./hooks/useSaves";
 import { useSettings } from "./hooks/useSettings";
+import { friendly } from "./lib/errors";
 import { ageOK, applyEdit, cloneState, countGot, eff, emptyState, timeOK } from "./lib/rows";
 import { ls } from "./lib/storage";
 import type { AgeFilter, ListState, Order, RowEdit, TimeFilter } from "./lib/types";
@@ -10,15 +11,17 @@ import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistTable } from "./components/ChecklistTable";
 import { FilterBar } from "./components/FilterBar";
 import { ListsDrawer } from "./components/ListsDrawer";
+import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
-import { PanelIcon, Toast } from "./components/ui";
+import { PanelIcon } from "./components/ui";
 
 const wide = () => window.innerWidth >= 900;
 
 export default function App() {
-  const { data: ref, error: refError } = useReference();
-  const { user, recovering, setRecovering } = useAuth();
-  const saves = useSaves(user, ref?.lists ?? null);
+  const notify = useNotify();
+  const { data: ref, error: refError, retry } = useReference();
+  const { user, recovering, setRecovering } = useAuth(notify);
+  const saves = useSaves(user, ref?.lists ?? null, notify);
   const [settings, setSettings] = useSettings(user, saves.activeId);
 
   const [curId, setCurId] = useState(() => window.location.hash.slice(1));
@@ -31,11 +34,7 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(() => (wide() ? ls.get("oot-panel-open", true) : false));
   const [srcOpen, setSrcOpen] = useState(false);
   const [acctOpen, setAcctOpen] = useState(false);
-  const [notice, setNotice] = useState<{ text: string; err?: boolean } | null>(null);
-  const [toastMsg, setToastMsg] = useState<{ text: string; err?: boolean } | null>(null);
-
-  const toast = useCallback((text: string, err?: boolean) => { setToastMsg({ text, err }); }, []);
-  useEffect(() => { if (!toastMsg) return; const t = setTimeout(() => setToastMsg(null), 4200); return () => clearTimeout(t); }, [toastMsg]);
+  const [saving, setSaving] = useState(false);
 
   const lists = ref?.lists ?? [];
   const list = lists.find(L => L.id === curId) ?? lists[0];
@@ -67,6 +66,19 @@ export default function App() {
   // Pause live updates while editing so a co-editor's change doesn't overwrite your draft
   useEffect(() => { saves.pauseLive(editing); }, [editing, saves]);
 
+  // Leaving the page mid-edit would lose the draft
+  useEffect(() => {
+    if (!editing) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [editing]);
+
+  // If access to the save drops to view only mid-edit, stop editing
+  useEffect(() => {
+    if (draft && !saves.canEdit) { setDraft(null); notify.info("This save file is now view only, so your unsaved edits were discarded."); }
+  }, [draft, saves.canEdit, notify]);
+
   const state: ListState = (list && (draft ? draft.after : saves.progress[list.id])) || emptyState();
   const all = useMemo(() => (list ? list.rows.map(r => eff(r, state)) : []), [list, state]);
   const q = search.trim().toLowerCase().replace(/[’']/g, "");
@@ -90,14 +102,13 @@ export default function App() {
   const pool = all.filter(r => ageOK(r, filt) && timeOK(r, tfilt));
 
   // Row actions
-  const onToggle = async (n: number, on: boolean) => {
+  const onToggle = (n: number, on: boolean) => {
     if (!list) return;
     if (draft) {
       const got = new Set(draft.after.got); on ? got.add(n) : got.delete(n);
       setDraft({ ...draft, after: { ...draft.after, got } }); return;
     }
-    const err = await saves.setCollected(list.id, n, on);
-    if (err) toast(err, true);
+    void saves.setCollected(list.id, n, on);
   };
   const onEdit = (n: number, field: keyof RowEdit, value: string) => {
     if (!draft || !list) return;
@@ -108,27 +119,36 @@ export default function App() {
   };
   const onUndo = (n: number) => { if (!draft) return; const O = { ...draft.after.O }; delete O[n]; setDraft({ ...draft, after: { ...draft.after, O } }); };
 
-  const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); setNotice(null); };
-  const cancelEdit = () => { setDraft(null); setNotice({ text: "Edits canceled. Nothing was saved." }); };
+  const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
+  const cancelEdit = () => { setDraft(null); notify.info("Edits canceled. Nothing was saved."); };
   const doneEdit = async () => {
-    if (!draft || !list) return;
-    const d = draft; setDraft(null); setNotice({ text: "Saving…" });
-    const err = await saves.commit(list.id, d.before, d.after);
-    setNotice(err ? { text: err, err: true } : { text: user ? `Saved to “${saves.active?.name}”.` : "Saved in this browser." });
+    if (!draft || !list || saving) return;
+    const d = draft; setDraft(null); setSaving(true);
+    const ok = await saves.commit(list.id, d.before, d.after);
+    setSaving(false);
+    if (ok) notify.ok(user ? `Saved to “${saves.active?.name}”.` : "Saved in this browser.");
   };
   const resetAll = () => { if (draft) setDraft({ ...draft, after: { ...draft.after, O: {} } }); };
 
   const downloadCsv = () => {
     if (!list) return;
-    const cell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-    const rows = [["#", "Area", "Location", "Map Level", "Link", "Adult first", "Time", "Notes", "Collected"],
-      ...all.map(r => [r.n, r.a, r.l, r.lv === "?" ? "" : r.lv, r.age, r.af ? "TRUE" : "FALSE", r.time, r.note, state.got.has(r.n) ? "TRUE" : "FALSE"])];
-    const blob = new Blob([rows.map(r => r.map(cell).join(",")).join("\n")], { type: "text/csv" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${list.name}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    try {
+      const cell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+      const rows = [["#", "Area", "Location", "Map Level", "Link", "Adult first", "Time", "Notes", "Collected"],
+        ...all.map(r => [r.n, r.a, r.l, r.lv === "?" ? "" : r.lv, r.age, r.af ? "TRUE" : "FALSE", r.time, r.note, state.got.has(r.n) ? "TRUE" : "FALSE"])];
+      const blob = new Blob([rows.map(r => r.map(cell).join(",")).join("\n")], { type: "text/csv" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${list.name}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch (e) { notify.error("download csv", e, "Couldn't create the CSV"); }
   };
 
-  if (refError) return <div className="wrap"><p className="sub">Couldn't load the checklists. Check your connection and reload the page.</p></div>;
+  if (refError) return (
+    <div className="wrap crash">
+      <h1>Couldn't load the checklists</h1>
+      <p className="sub">{friendly(refError)}</p>
+      <button className="primary" onClick={retry}>Try again</button>
+    </div>
+  );
 
   const active = saves.active;
   const readOnly = !saves.canEdit;
@@ -154,6 +174,7 @@ export default function App() {
         {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={() => setAcctOpen(true)}>Sign in</button> to keep it on every device, use several save files and share them.</>
           : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={() => setAcctOpen(true)}>Switch or share</button>
             {active.role === "viewer" && <span className="ro">View only</span>}</>}
+        {saving && <span className="ro">Saving…</span>}
       </div>
 
       {list && <FilterBar
@@ -166,7 +187,6 @@ export default function App() {
         order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups}
         settings={settings} setSettings={setSettings}
       />}
-      {notice && <div className={"savemsg" + (notice.err ? " err" : "")} role="status">{notice.text}</div>}
       {editing && <div className="editbar">Editing: change the area, location, map level, age, time or requirements on any row. Nothing is saved until you tap Done editing.{" "}
         <button className="linkbtn" onClick={resetAll}>Reset all edits on this list</button></div>}
 
@@ -186,7 +206,6 @@ export default function App() {
     {ref && list && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={list.id} />}
     {list && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
       lists={lists} curId={list.id} saves={saves.saves} active={active} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
-      guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} toast={toast} />}
-    <Toast msg={toastMsg} />
+      guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
   </>;
 }
