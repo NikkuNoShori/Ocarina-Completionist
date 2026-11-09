@@ -2,11 +2,12 @@ import { Component, createContext, useCallback, useContext, useMemo, useRef, use
 import { friendly, isExpected, reportError } from "../lib/errors";
 
 type Kind = "ok" | "info" | "err";
-interface ToastItem { id: number; kind: Kind; text: string }
+export interface ToastAction { label: string; run: () => void }
+interface ToastItem { id: number; kind: Kind; text: string; action?: ToastAction }
 
 export interface Notify {
   ok: (text: string) => void;
-  info: (text: string) => void;
+  info: (text: string, action?: ToastAction) => void;
   /** Show an error to the person and log it. `fallback` describes what failed, e.g. "Couldn't save". */
   error: (context: string, err: unknown, fallback?: string) => void;
 }
@@ -18,18 +19,19 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(1);
   const dismiss = useCallback((id: number) => setToasts(t => t.filter(x => x.id !== id)), []);
-  const push = useCallback((kind: Kind, text: string) => {
+  const push = useCallback((kind: Kind, text: string, action?: ToastAction) => {
     setToasts(t => {
       if (t.some(x => x.text === text)) return t; // don't stack duplicates
       const id = nextId.current++;
-      setTimeout(() => dismiss(id), kind === "err" ? 9000 : 6000);
-      return [...t.slice(-3), { id, kind, text }];
+      // Notices with a button stay longer so there's time to use it
+      setTimeout(() => dismiss(id), action ? 15000 : kind === "err" ? 9000 : 6000);
+      return [...t.slice(-3), { id, kind, text, action }];
     });
   }, [dismiss]);
 
   const api = useMemo<Notify>(() => ({
     ok: text => push("ok", text),
-    info: text => push("info", text),
+    info: (text, action) => push("info", text, action),
     error: (context, err, fallback) => {
       if (!isExpected(err)) reportError(context, err);
       push("err", friendly(err, fallback));
@@ -43,6 +45,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
         {toasts.map(t => (
           <div key={t.id} className={"toast " + t.kind} role={t.kind === "err" ? "alert" : "status"}>
             <span>{t.text}</span>
+            {t.action && <button className="taction" onClick={() => { dismiss(t.id); t.action!.run(); }}>{t.action.label}</button>}
             <button className="tclose" aria-label="Dismiss" onClick={() => dismiss(t.id)}>×</button>
           </div>
         ))}

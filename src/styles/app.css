@@ -389,3 +389,6 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .kmenu{max-width:calc(100vw - 32px)}
 .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
 .seg button{white-space:nowrap;flex:0 0 auto}
+.taction{flex:0 0 auto;align-self:center;background:var(--bg);color:var(--fg);border:0;border-radius:6px;padding:5px 12px;font:700 .85rem var(--body);cursor:pointer}
+.taction:hover{opacity:.9}
+.taction:focus-visible{outline:2px solid var(--bg);outline-offset:2px}

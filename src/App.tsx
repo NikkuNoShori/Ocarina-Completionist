@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useReference } from "./hooks/useReference";
 import { hasGuestData, useSaves } from "./hooks/useSaves";
+import { useNotifications } from "./hooks/useNotifications";
 import { useSettings } from "./hooks/useSettings";
 import { friendly } from "./lib/errors";
 import { ageOK, applyEdit, cloneState, countGot, eff, emptyState, timeOK } from "./lib/rows";
@@ -26,6 +27,8 @@ export default function App() {
   const { user, recovering, setRecovering, welcoming, setWelcoming } = useAuth(notify);
   const saves = useSaves(user, ref?.lists ?? null, notify);
   const [settings, setSettings] = useSettings(user, saves.activeId);
+  // "Alex shared … with you" notices; Open switches to that save file (reloading the list first in case it's new)
+  useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); if (legal) location.hash = ""; }, welcoming);
 
   const [curId, setCurId] = useState(() => window.location.hash.slice(1));
   const [filt, setFilt] = useState<AgeFilter>("all");

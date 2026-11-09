@@ -1,15 +1,9 @@
 // Share a save file by email.
 // The caller must own the save.
-//  - Someone with an account is added right away and, if SMTP secrets are set, gets a "shared with you" email.
+//  - Someone with an account is added right away. A database trigger gives them an in-app notice.
 //  - Someone new gets the Supabase "Invite user" email and joins the save when they accept it.
-// Re-sharing to the same email updates their role (and re-sends the email).
-//
-// Optional secrets for the "shared with you" email (Edge Functions -> Secrets):
-//   SMTP_USER, SMTP_PASS (required to send), SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 465),
-//   SMTP_FROM_NAME (default "Ocarina Completionist"), SITE_URL (default https://ocarina-completionist.vercel.app)
+// Re-sharing to the same email updates their role (and re-sends the invite email if they haven't joined yet).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { SHARE_EMAIL_HTML } from "./email.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -18,44 +12,6 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-
-/** Send the "shared with you" email. Returns "sent", "not_configured", or an error message. */
-async function sendShareEmail(to: string, inviter: string, saveName: string, role: string): Promise<string> {
-  const user = Deno.env.get("SMTP_USER"), pass = Deno.env.get("SMTP_PASS");
-  if (!user || !pass) return "not_configured";
-  const site = Deno.env.get("SITE_URL") ?? "https://ocarina-completionist.vercel.app";
-  const roleLine = role === "viewer"
-    ? "You can <b>follow along</b> with their progress."
-    : "You can <b>check things off together</b>. Changes show up for both of you right away.";
-  const html = SHARE_EMAIL_HTML
-    .replaceAll("%%INVITER%%", esc(inviter)).replaceAll("%%SAVE%%", esc(saveName))
-    .replaceAll("%%ROLE_LINE%%", roleLine).replaceAll("%%URL%%", esc(site + "/"))
-    .replaceAll("%%SITE%%", esc(site)).replaceAll("%%EMAIL%%", esc(to));
-  const client = new SMTPClient({
-    connection: {
-      hostname: Deno.env.get("SMTP_HOST") ?? "smtp.gmail.com",
-      port: Number(Deno.env.get("SMTP_PORT") ?? 465),
-      tls: true,
-      auth: { username: user, password: pass },
-    },
-  });
-  try {
-    await client.send({
-      from: `${Deno.env.get("SMTP_FROM_NAME") ?? "Ocarina Completionist"} <${user}>`,
-      to,
-      subject: `${inviter} shared a playthrough with you`,
-      content: `${inviter} shared "${saveName}" with you on Ocarina Completionist. Open ${site}/ and find it under Account > Shared with you.`,
-      html,
-    });
-    return "sent";
-  } catch (e) {
-    console.error("share-save smtp", to, (e as Error).message);
-    return (e as Error).message;
-  } finally {
-    try { await client.close(); } catch { /* already closed */ }
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -96,8 +52,6 @@ Deno.serve(async (req) => {
     console.error("share-save lookup", lookErr.message);
     return json({ error: "Couldn't look up that email. Try again." }, 500);
   }
-  const inviterName = inviter?.display_name || inviter?.email || me.user.email || "Someone";
-  const saveName = save?.name ?? "a playthrough";
   const can = role === "editor" ? "edit" : "view";
 
   if (existing) {
@@ -108,17 +62,18 @@ Deno.serve(async (req) => {
       return json({ error: "Couldn't add them to the save file. Try again." }, 500);
     }
     await admin.from("save_invites").update({ accepted_at: new Date().toISOString() }).eq("save_id", saveId).eq("email", email);
-    const mail = await sendShareEmail(email, inviterName, saveName, role);
-    const note = mail === "sent" ? " We emailed them to let them know."
-      : mail === "not_configured" ? " It's under “Shared with you” in their Account panel."
-      : " It's under “Shared with you” in their Account panel (the heads-up email didn't send).";
-    return json({ status: "added", email: mail, message: `${email} can now ${can} this save file.${note}` });
+    return json({ status: "added", message: `${email} can now ${can} this save file. They'll see a notice next time they open the site.` });
   }
 
   // Details for the invite email and the welcome screen (stored on the new user's metadata).
   const { error: mailErr } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: body.redirect_to || undefined,
-    data: { invited_by: inviterName, save_name: saveName, save_id: saveId, role },
+    data: {
+      invited_by: inviter?.display_name || inviter?.email || me.user.email,
+      save_name: save?.name ?? "a playthrough",
+      save_id: saveId,
+      role,
+    },
   });
   if (mailErr) {
     console.error("share-save email", email, mailErr.message);
