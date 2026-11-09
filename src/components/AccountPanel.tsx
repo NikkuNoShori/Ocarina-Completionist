@@ -79,6 +79,7 @@ function SignIn({ view, go, setMsg }: { view: View; go: (v: View) => void; setMs
         : <><button className="linkbtn" onClick={() => go("forgot")}>Forgot password?</button> · New here? <button className="linkbtn" onClick={() => go("signup")}>Create an account</button></>}
     </p>
     <p className="anote">Signing in keeps your progress on every device, gives you several save files, and lets you share them. Without an account, checkmarks stay in this browser.</p>
+    <p className="anote">By signing in you agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
   </>;
 }
 

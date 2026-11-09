@@ -176,6 +176,7 @@ export default function App() {
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
 
       {list && <p className="foot"><span dangerouslySetInnerHTML={{ __html: list.foot }} /> Tap the <b>?</b> button for all sources.</p>}
+      <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p>
     </div>
 
     {panelOpen && list && <ListsDrawer lists={lists} progress={draft ? { ...saves.progress, [list.id]: draft.after } : saves.progress} curId={list.id} editing={editing}
