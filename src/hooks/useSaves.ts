@@ -58,7 +58,13 @@ export function useSaves(user: User | null, lists: ChecklistList[] | null, notif
       const o = (r.data ?? []).find((p: { role: string }) => p.role === "owner");
       if (o) emails[others[i]] = o.email;
     });
-    const list = (files.data ?? []).map(f => ({ ...f, role: f.owner_id === user.id ? "owner" : roles[f.id] ?? "viewer", owner_email: emails[f.id] })) as SaveFile[];
+    // Checkmark counts per save, for the % shown in the Account panel
+    const done: Record<string, number> = {};
+    const ids = (files.data ?? []).map(f => f.id);
+    // One count per save (counts aren't capped by the API's row limit)
+    const counts = await Promise.all(ids.map(id => sb.from("save_progress").select("save_id", { count: "exact", head: true }).eq("save_id", id)));
+    counts.forEach((r, i) => { if (r.error) reportError("save counts", r.error); else done[ids[i]] = r.count ?? 0; });
+    const list = (files.data ?? []).map(f => ({ ...f, role: f.owner_id === user.id ? "owner" : roles[f.id] ?? "viewer", owner_email: emails[f.id], done: done[f.id] ?? 0 })) as SaveFile[];
     setSaves(list);
     return list;
   }, [user, notify]);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>Ocarina Completionist</title>
     <meta name="description" content="Track every Gold Skulltula, Heart Piece, Magic Bean, Great Fairy, song, upgrade and bottle in the Switch 2 Ocarina of Time remake." />
-    <meta name="theme-color" content="#eff3e4" />
+    <meta name="theme-color" content="#0e1733" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
@@ -30,11 +30,11 @@
           l.href = "https://fonts.googleapis.com/css2?family=" + FONTS[skin] + "&display=swap";
           document.head.appendChild(l);
         };
-        var d = document.documentElement, skin = "kokiri";
+        var d = document.documentElement, skin = "hyrule";
         try {
           var g = function (k) { return JSON.parse(localStorage.getItem(k)); };
-          skin = g("oot-skin") || "kokiri";
-          d.dataset.theme = g("oot-mode") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          skin = g("oot-skin") || "hyrule";
+          d.dataset.theme = g("oot-mode") || "dark";
           d.dataset.density = g("oot-density") || "comfortable";
         } catch (e) { /* storage blocked: defaults */ }
         d.dataset.skin = skin;

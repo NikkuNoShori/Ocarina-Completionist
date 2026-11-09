@@ -1,13 +1,13 @@
 import type { ChecklistList, Progress } from "../lib/types";
 import { PanelIcon } from "./ui";
 
-export function ListsDrawer({ lists, progress, curId, editing, onPick, onClose }: {
-  lists: ChecklistList[]; progress: Progress; curId: string; editing: boolean; onPick: () => void; onClose: () => void;
+export function ListsDrawer({ lists, progress, overallPct, curId, editing, onPick, onClose }: {
+  lists: ChecklistList[]; progress: Progress; overallPct: number; curId: string; editing: boolean; onPick: () => void; onClose: () => void;
 }) {
   return (
     <aside className="drawer" id="drawer" aria-label="Checklists">
       <div className="dhead">
-        <h2>Checklists</h2>
+        <h2>Checklists <span className="dpct" title="Overall completion">{overallPct}%</span></h2>
         <button className="ptoggle" onClick={onClose} aria-label="Close the lists panel" title="Close the lists panel"><PanelIcon /></button>
       </div>
       <nav id="tabs" aria-disabled={editing}>

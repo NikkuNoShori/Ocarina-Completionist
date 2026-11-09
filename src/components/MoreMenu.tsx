@@ -19,7 +19,8 @@ export function MoreMenu({ settings, setSettings, items }: {
   const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
+    // Outside the menu closes it. On phones the dimmed backdrop belongs to the wrapper itself, so that closes it too.
+    const onDoc = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node) || e.target === wrap.current) setOpen(false); };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); btn.current?.focus(); } };
     document.addEventListener("click", onDoc); document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("click", onDoc); document.removeEventListener("keydown", onKey); };

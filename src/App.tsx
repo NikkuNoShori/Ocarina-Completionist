@@ -5,6 +5,7 @@ import { hasGuestData, useSaves } from "./hooks/useSaves";
 import { useNotifications } from "./hooks/useNotifications";
 import { useSettings } from "./hooks/useSettings";
 import { friendly } from "./lib/errors";
+import { completion } from "./lib/progress";
 import { ageOK, applyEdit, cloneState, countGot, eff, emptyState, timeOK } from "./lib/rows";
 import { downloadCsv, downloadXlsx } from "./lib/sheets";
 import { ls } from "./lib/storage";
@@ -17,7 +18,8 @@ import { ListsDrawer } from "./components/ListsDrawer";
 import { MoreMenu } from "./components/MoreMenu";
 import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
-import { PanelIcon } from "./components/ui";
+import { ProgressSummary } from "./components/ProgressSummary";
+import { Modal, PanelIcon } from "./components/ui";
 
 const wide = () => window.innerWidth >= 900;
 
@@ -28,7 +30,8 @@ export default function App() {
   const saves = useSaves(user, ref?.lists ?? null, notify);
   const [settings, setSettings] = useSettings(user, saves.activeId);
   // "Alex shared … with you" notices; Open switches to that save file (reloading the list first in case it's new)
-  useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); if (legal) location.hash = ""; }, welcoming);
+  const [joinedId, setJoinedId] = useState<string | null>(null);
+  useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); setJoinedId(id); if (legal) location.hash = ""; }, welcoming);
 
   const [curId, setCurId] = useState(() => window.location.hash.slice(1));
   const [filt, setFilt] = useState<AgeFilter>("all");
@@ -163,6 +166,10 @@ export default function App() {
 
   const active = saves.active;
   const readOnly = !saves.canEdit;
+  // Overall completion of the open save (includes unsaved edits while editing)
+  const liveAll = draft && list ? { ...saves.progress, [list.id]: draft.after } : saves.progress;
+  const overall = completion(lists, liveAll);
+  const joined = joinedId && saves.activeId === joinedId ? active : null;
 
   return <>
     <div className="wrap">
@@ -188,6 +195,8 @@ export default function App() {
         {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={() => setAcctOpen(true)}>Sign in</button> to keep it on every device, use several save files and share them.</>
           : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={() => setAcctOpen(true)}>Switch or share</button>
             {active.role === "viewer" && <span className="ro">View only</span>}</>}
+        {lists.length > 0 && <span className="pctchip" title={`${overall.done} of ${overall.total} collected across every list`}>
+          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span>{overall.pct}% complete</span>}
         {saving && <span className="ro">Saving…</span>}
       </div>
 
@@ -214,14 +223,26 @@ export default function App() {
       <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
     </div>
 
-    {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={draft && list ? { ...saves.progress, [list.id]: draft.after } : saves.progress} curId={list?.id ?? ""} editing={editing}
+    {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={liveAll} overallPct={overall.pct} curId={list?.id ?? ""} editing={editing}
       onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)} />}
 
     {!srcOpen && <button className="fab" aria-label="Show sources" aria-haspopup="dialog" onClick={() => setSrcOpen(true)}>?</button>}
     {ref && lists.length > 0 && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={firstId} />}
     {lists.length > 0 && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
       welcoming={welcoming} onWelcomed={() => setWelcoming(false)}
-      lists={lists} curId={firstId} saves={saves.saves} active={active} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
+      lists={lists} curId={firstId} saves={saves.saves} active={active} progress={saves.progress} activeId={saves.activeId} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
       guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
+    {/* Opened a playthrough someone just shared: show where you are and how far along it is */}
+    <Modal open={!!joined} onClose={() => setJoinedId(null)} title="You're in" labelId="joinTitle" className="acctpanel" center>
+      {joined && <div className="aform welcome">
+        <div className="whero">
+          <span className="weyebrow">{joined.owner_email ? `${joined.owner_email.split("@")[0]}'s playthrough` : "Shared playthrough"}</span>
+          <b className="wsave">{joined.name}</b>
+          <span className="wrole">{joined.role === "viewer" ? "View only" : "You can check things off together"}</span>
+        </div>
+        <ProgressSummary c={overall} />
+        <button className="primary" onClick={() => setJoinedId(null)}>Start playing</button>
+      </div>}
+    </Modal>
   </>;
 }

@@ -5,7 +5,8 @@ import { reportError } from "../lib/errors";
 import { ls } from "../lib/storage";
 import type { Settings } from "../lib/types";
 
-const sysDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+/** What a first-time visitor sees: Hyrule Night, dark. */
+export const DEFAULT_SETTINGS: Settings = { theme: "hyrule", mode: "dark", density: "comfortable" };
 
 /**
  * Theme, light/dark and spacing: kept in this browser and, when signed in, on the account.
@@ -13,8 +14,8 @@ const sysDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-c
  */
 export function useSettings(user: User | null, activeSaveId: string | null) {
   const [settings, setSettings] = useState<Settings>({
-    theme: ls.get("oot-skin", "kokiri"),
-    mode: ls.get("oot-mode", sysDark ? "dark" : "light"),
+    theme: ls.get("oot-skin", DEFAULT_SETTINGS.theme),
+    mode: ls.get("oot-mode", DEFAULT_SETTINGS.mode),
     density: ls.get("oot-density", "comfortable"),
   });
   const [syncedUser, setSyncedUser] = useState<string | null>(null);

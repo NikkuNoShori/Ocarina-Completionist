@@ -440,3 +440,84 @@ h1 #h1n{font-variant-numeric:tabular-nums}
   .acctbtn{padding:4px}
   .acctbtn span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 }
+/* ---------- Phone toolbar: age buttons / time + ⋮ / search, each on its own row ---------- */
+@media (max-width:640px){
+  .bar{gap:8px}
+  .bar>.seg{order:1;flex:1 1 100%}
+  .bar>.tsel{order:2;flex:0 1 auto}
+  .bar>.editbtn{order:3}
+  .bar>.kebab{order:4;margin-left:auto}
+  .bar>.search{order:5;flex:1 1 100%;margin-left:0}
+  .bar>.search .sel{width:100%}
+  /* Menus open as a sheet from the bottom of the screen, so every option is reachable */
+  .kmenu{position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));
+    top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:none;min-width:0;max-height:75vh;
+    z-index:70;border-radius:14px;padding:8px;box-shadow:0 -6px 40px rgba(0,0,0,.45)}
+  .kebab:has(.kmenu)::before{content:"";position:fixed;inset:0;z-index:69;background:rgba(0,0,0,.35)}
+}
+/* ---------- Completion ring + per-list bars ---------- */
+.psum{display:flex;gap:18px;align-items:center;margin:4px 0}
+.pring{--p:0;flex:0 0 auto;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--gold) calc(var(--p) * 1%),var(--line) 0)}
+.pring>div{width:94px;height:94px;border-radius:50%;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.pring b{font:700 1.6rem var(--display);color:var(--gold);line-height:1}
+.pring small{font-size:.72rem;color:var(--muted);margin-top:4px}
+.plists{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:grid;gap:5px}
+.plists li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:.8rem}
+.pl-name{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-num{color:var(--muted);font-variant-numeric:tabular-nums}
+.pl-bar{grid-column:1/-1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.pl-bar i{display:block;height:100%;background:var(--gold)}
+@media (max-width:420px){.psum{flex-direction:column}.plists{width:100%}}
+/* ---------- Welcome / joined popup ---------- */
+.whero{text-align:center;padding:4px 0 10px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.weyebrow{display:block;font:600 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wsave{display:block;font:700 1.35rem var(--display);color:var(--gold);margin:4px 0 2px}
+.wrole{font-size:.85rem;color:var(--muted)}
+.wform{display:grid;gap:10px;margin-top:6px}
+.wform label small{font-weight:400}
+.anote.center{text-align:center}
+/* ---------- Account panel ---------- */
+.acctpanel h3{margin:0;font:700 .72rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.who{display:flex;align-items:center;gap:12px;padding:4px 0 14px;border-bottom:1px solid var(--line);margin:0 0 12px}
+.wav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--active);color:var(--bg);font:700 1.1rem var(--display)}
+.wname{flex:1;min-width:0;display:flex;flex-direction:column}
+.wname b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+.wname small{color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .inline{margin:0;flex:1}
+.iconbtn{background:none;border:0;color:var(--muted);font-size:1rem;cursor:pointer;padding:6px;border-radius:6px}
+.iconbtn:hover{color:var(--gold);background:var(--bg)}
+.iconbtn:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.shead{display:flex;align-items:baseline;justify-content:space-between;margin:2px 0 8px}
+.acctpanel .slist{margin-bottom:14px}
+.acctpanel .slist+h3,.acctpanel h3+.slist{margin-top:8px}
+.srow{flex-wrap:nowrap;gap:4px;padding:4px 4px 4px 6px}
+.srow .inline{margin:4px 0;flex:1}
+.spick{display:flex;flex-direction:column;gap:4px;padding:6px 4px}
+.sline{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.sline b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spct{font:700 .82rem var(--body);color:var(--gold);font-variant-numeric:tabular-nums}
+.sbar{display:block;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.sbar i{display:block;height:100%;background:var(--gold)}
+.srow.on .spick b::before{content:"\25CF";color:var(--gold);font-size:.6em;margin-right:6px;vertical-align:.2em}
+.rowmenu{position:relative;align-self:center}
+.rowmenu .kbtn{width:32px}
+.rmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;min-width:170px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px;display:flex;flex-direction:column}
+.rmenu .kitem{width:100%;font-size:.9rem;padding:8px 10px}
+.kitem.danger{color:var(--adult)}
+.kitem:disabled{opacity:.5;cursor:default}
+.importbox{font-size:.85rem;color:var(--muted)}
+.afoot{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
+.afoot .linkbtn{text-decoration:none;font-weight:600}
+.adanger{text-align:center;margin:10px 0 0}
+.adanger .linkbtn{color:var(--muted);font-weight:500;font-size:.8rem;text-decoration:underline}
+.alinks.top{margin:0 0 8px}
+/* ---------- Completion in the app ---------- */
+.pctchip{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font:700 .8rem var(--body);color:var(--gold);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pctbar{display:inline-block;width:56px;height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.pctbar i{display:block;height:100%;background:var(--gold)}
+.dpct{font:700 .8rem var(--body);color:var(--muted);margin-left:6px;font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none}
+@media (max-width:640px){.pctchip{display:flex;margin:6px 0 0}}
+/* An open menu sheet has to sit above the ? button and toasts, so lift its toolbar while it's open */
+.bar:has(.kmenu),.titlebar:has(.kmenu){z-index:80;position:relative}
+.bar:has(.kmenu){position:sticky}

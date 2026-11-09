@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { sb } from "../lib/supabase";
-import type { ChecklistList, SaveFile } from "../lib/types";
+import { completion, percent, totalItems } from "../lib/progress";
+import type { ChecklistList, Progress, SaveFile } from "../lib/types";
 import { useNotify, type Notify } from "./Notify";
+import { ProgressSummary } from "./ProgressSummary";
 import { ConfirmButton, Modal } from "./ui";
 import { ANY_LIST, guessList, matchAnyList, matchRows, namesMatch, readSpreadsheet, type ParsedSheet } from "../lib/sheets";
 
-type View = "signin" | "signup" | "forgot" | "main" | "share" | "errors";
+type View = "signin" | "signup" | "forgot" | "main" | "share" | "errors" | "import";
 const redirectTo = () => window.location.origin + window.location.pathname;
 
 /** Edge functions return { error } with a non-2xx status; pull out that message. */
@@ -22,6 +24,7 @@ interface Props {
   open: boolean; onClose: () => void; user: User | null; recovering: boolean; onRecovered: () => void;
   welcoming: boolean; onWelcomed: () => void;
   lists: ChecklistList[]; curId: string; saves: SaveFile[]; active: SaveFile | null;
+  progress: Progress; activeId: string | null;
   onSwitch: (id: string) => void; reloadSaves: () => Promise<SaveFile[] | null>;
   guestData: boolean; onCopyGuest: () => Promise<void>;
   onImport: (listId: string, ns: number[]) => Promise<boolean>;
@@ -38,37 +41,43 @@ export function AccountPanel(p: Props) {
     sb.rpc("am_i_admin").then(({ data, error }) => { if (!error) setIsAdmin(!!data); });
   }, [p.user]);
 
-  let body;
+  let body, title = p.user ? "Account" : "Sign in";
+  const back = () => setView("main");
   const shareSave = p.saves.find(s => s.id === shareId);
   const welcome = p.welcoming && !!p.user && !p.recovering;
   if (p.recovering && p.user) body = <Recover user={p.user} notify={notify} done={() => { p.onRecovered(); notify.ok("Password updated."); setView("main"); }} />;
-  else if (welcome) body = <Welcome user={p.user!} saves={p.saves} notify={notify} onSwitch={p.onSwitch} done={p.onWelcomed} />;
+  else if (welcome) { title = "Welcome"; body = <Welcome {...p} user={p.user!} notify={notify} done={p.onWelcomed} />; }
   else if (!p.user) body = <SignIn view={view} go={setView} notify={notify} />;
-  else if (view === "share" && shareSave) body = <Share save={shareSave} back={() => setView("main")} notify={notify} reloadSaves={p.reloadSaves} />;
-  else if (view === "errors" && isAdmin) body = <ErrorLog back={() => setView("main")} notify={notify} />;
-  else body = <Main {...p} user={p.user} notify={notify} isAdmin={isAdmin} onShare={id => { setShareId(id); setView("share"); }} onErrors={() => setView("errors")} />;
+  else if (view === "share" && shareSave) { title = "Share"; body = <Share save={shareSave} back={back} notify={notify} reloadSaves={p.reloadSaves} />; }
+  else if (view === "errors" && isAdmin) { title = "Error log"; body = <ErrorLog back={back} notify={notify} />; }
+  else if (view === "import") { title = "Import"; body = <><p className="alinks top"><button className="linkbtn" onClick={back}>‹ Back</button></p><ImportBox lists={p.lists} curId={p.curId} active={p.active} onImport={p.onImport} notify={notify} /></>; }
+  else body = <Main {...p} user={p.user} notify={notify} isAdmin={isAdmin} go={setView} onShare={id => { setShareId(id); setView("share"); }} />;
 
   return (
-    <Modal open={p.open || p.recovering || welcome} onClose={welcome ? p.onWelcomed : p.onClose} title={welcome ? "Welcome" : p.user ? "Account" : "Sign in"} labelId="acctTitle" className="acctpanel" center>
+    <Modal open={p.open || p.recovering || welcome} onClose={welcome ? p.onWelcomed : p.onClose} title={title} labelId="acctTitle" className="acctpanel" center>
       {body}
     </Modal>
   );
 }
 
 /**
- * First visit from an invite email. They're already signed in by the link; this lets them
- * pick a display name and a password (so they can sign in again by email), then opens the shared playthrough.
+ * First visit from an invite email. They're signed in by the link. Shows whose playthrough this is and
+ * how far along it is, then lets them pick a name and a password (or skip and use Google later).
  */
-function Welcome({ user, saves, notify, onSwitch, done }: {
-  user: User; saves: SaveFile[]; notify: Notify; onSwitch: (id: string) => void; done: () => void;
-}) {
+function Welcome(p: Props & { user: User; notify: Notify; done: () => void }) {
+  const { user, saves, notify } = p;
   const meta = (user.user_metadata ?? {}) as { invited_by?: string; save_name?: string; save_id?: string; role?: string };
   const shared = saves.find(s => s.id === meta.save_id) ?? saves.find(s => s.role !== "owner");
   const [name, setName] = useState(""), [pw, setPw] = useState(""), [busy, setBusy] = useState(false);
   useEffect(() => {
     sb.from("profiles").select("display_name").eq("id", user.id).maybeSingle().then(({ data }) => setName(data?.display_name ?? ""));
   }, [user.id]);
-  const open = () => { if (shared) onSwitch(shared.id); done(); };
+  // Open the shared playthrough right away so its progress loads behind this popup
+  const switched = useRef(false);
+  useEffect(() => { if (shared && !switched.current) { switched.current = true; p.onSwitch(shared.id); } }, [shared, p]);
+  const ready = !!shared && p.activeId === shared.id;
+  const c = completion(p.lists, p.progress);
+
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setBusy(true);
     try {
@@ -78,23 +87,26 @@ function Welcome({ user, saves, notify, onSwitch, done }: {
       }
       const { error } = await sb.from("profiles").update({ display_name: name.trim().slice(0, 60) || null }).eq("id", user.id);
       if (error) return notify.error("welcome name", error, "Couldn't save your name");
-      notify.ok(pw ? "You're all set. Next time, sign in with your email and this password." : "You're all set.");
-      open();
+      if (pw) notify.ok("Password saved. Next time, sign in with your email and this password.");
+      p.done();
     } finally { setBusy(false); }
   };
-  const what = meta.save_name ?? shared?.name;
+  const what = shared?.name ?? meta.save_name ?? "a playthrough";
+  const by = meta.invited_by ?? shared?.owner_email;
+  const role = shared?.role ?? meta.role;
   return (
     <form className="aform welcome" onSubmit={submit}>
-      <p className="wlead">
-        {meta.invited_by ? <><b>{meta.invited_by}</b> shared </> : "You've been invited to "}
-        {what ? <>the playthrough <b>“{what}”</b></> : "a playthrough"} with you
-        {meta.role ? <> ({meta.role === "viewer" ? "view only" : "you can check things off too"})</> : null}.
-      </p>
-      <p className="anote">You're signed in as <b>{user.email}</b>. Two quick things and you're in:</p>
-      <label>Your name<input className="sel" maxLength={60} placeholder="What should others see?" value={name} onChange={e => setName(e.target.value)} autoComplete="name" /></label>
-      <label>Choose a password<input className="sel" type="password" minLength={8} placeholder="At least 8 characters" value={pw} onChange={e => setPw(e.target.value)} autoComplete="new-password" /></label>
-      <p className="anote">Prefer Google? Skip the password; next time use <b>Continue with Google</b> with this same email.</p>
-      <button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : what ? `Open “${what}”` : "Continue"}</button>
+      <div className="whero">
+        <span className="weyebrow">{by ? `${by} invited you to` : "You've joined"}</span>
+        <b className="wsave">{what}</b>
+        <span className="wrole">{role === "viewer" ? "View only" : "You can check things off together"}</span>
+      </div>
+      {ready ? <ProgressSummary c={c} /> : <p className="anote center">Loading progress…</p>}
+      <div className="wform">
+        <label>Your name<input className="sel" maxLength={60} placeholder="What others see" value={name} onChange={e => setName(e.target.value)} autoComplete="name" /></label>
+        <label>Password <small>(optional)</small><input className="sel" type="password" minLength={8} placeholder="8+ characters, or use Google later" value={pw} onChange={e => setPw(e.target.value)} autoComplete="new-password" /></label>
+      </div>
+      <button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : "Start playing"}</button>
     </form>
   );
 }
@@ -168,11 +180,13 @@ function Recover({ user, done, notify }: { user: User; done: () => void; notify:
   );
 }
 
-function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare: (id: string) => void; onErrors: () => void }) {
+function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v: View) => void; onShare: (id: string) => void }) {
   const { saves, active, notify } = p;
-  const [newName, setNewName] = useState(""), [renaming, setRenaming] = useState<string | null>(null), [renameTo, setRenameTo] = useState("");
+  const [creating, setCreating] = useState(false), [newName, setNewName] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null), [renameTo, setRenameTo] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const own = saves.filter(s => s.role === "owner"), shared = saves.filter(s => s.role !== "owner");
+  const total = totalItems(p.lists);
 
   const switchAfter = (left: SaveFile[] | null, removedId: string) => { if (left && active?.id === removedId && left[0]) p.onSwitch(left[0].id); };
 
@@ -180,7 +194,7 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare
     e.preventDefault();
     const { data, error } = await sb.from("save_files").insert({ name: newName.trim() }).select().single();
     if (error) return notify.error("create save", error, "Couldn't create the save file");
-    setNewName(""); await p.reloadSaves(); p.onSwitch(data.id); notify.ok(`Created “${data.name}”.`);
+    setNewName(""); setCreating(false); await p.reloadSaves(); p.onSwitch(data.id); notify.ok(`Created “${data.name}”.`);
   };
   const rename = async (id: string) => {
     const { error } = await sb.from("save_files").update({ name: renameTo.trim(), updated_at: new Date().toISOString() }).eq("id", id);
@@ -222,51 +236,81 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare
     p.onClose(); notify.ok("Signed out.");
   };
 
-  const row = (s: SaveFile) => (
-    <li key={s.id} className={"srow" + (active?.id === s.id ? " on" : "")}>
-      <button className="spick" onClick={() => p.onSwitch(s.id)} aria-pressed={active?.id === s.id}>
-        <b>{s.name}</b>
-        <small>{s.role === "owner" ? "Yours" : `${s.role === "editor" ? "Can edit" : "View only"} · ${s.owner_email ?? "shared"}`}</small>
-      </button>
-      <span className="sacts">
-        {s.role === "owner" && <button className="linkbtn" onClick={() => p.onShare(s.id)}>Share</button>}
-        {s.role === "owner" && <button className="linkbtn" onClick={() => { setRenaming(s.id); setRenameTo(s.name); }}>Rename</button>}
-        <button className="linkbtn" disabled={busy === s.id} onClick={() => duplicate(s)}>{busy === s.id ? "Copying…" : "Copy"}</button>
-        {s.role === "owner"
-          ? own.length > 1 && <ConfirmButton label="Delete" confirmLabel="Tap again to delete for good" onConfirm={() => remove(s)} />
-          : <ConfirmButton label="Leave" confirmLabel="Tap again to leave" onConfirm={() => leave(s)} />}
-      </span>
-      {renaming === s.id && (
-        <form className="inline" onSubmit={e => { e.preventDefault(); rename(s.id); }}>
-          <input className="sel" maxLength={80} required autoFocus value={renameTo} onChange={e => setRenameTo(e.target.value)} />
-          <button className="primary sm" type="submit">Save</button>
-          <button className="linkbtn" type="button" onClick={() => setRenaming(null)}>Cancel</button>
-        </form>
-      )}
-    </li>
-  );
+  const row = (s: SaveFile) => {
+    // The active save shows live progress; others use the count loaded with the list
+    const done = s.id === active?.id ? completion(p.lists, p.progress).done : s.done ?? 0;
+    const pc = percent(done, total);
+    const sub = s.role === "owner" ? "Yours" : `${s.owner_email?.split("@")[0] ?? "Shared"} · ${s.role === "editor" ? "can edit" : "view only"}`;
+    return (
+      <li key={s.id} className={"srow" + (active?.id === s.id ? " on" : "")}>
+        {renaming === s.id ? (
+          <form className="inline" onSubmit={e => { e.preventDefault(); rename(s.id); }}>
+            <input className="sel" aria-label="New name" maxLength={80} required autoFocus value={renameTo} onChange={e => setRenameTo(e.target.value)} />
+            <button className="primary sm" type="submit">Save</button>
+            <button className="linkbtn" type="button" onClick={() => setRenaming(null)}>Cancel</button>
+          </form>
+        ) : <>
+          <button className="spick" onClick={() => p.onSwitch(s.id)} aria-pressed={active?.id === s.id}>
+            <span className="sline"><b>{s.name}</b><span className="spct">{pc}%</span></span>
+            <span className="sbar"><i style={{ width: `${pc}%` }} /></span>
+            <small>{sub}</small>
+          </button>
+          <RowMenu label={`Options for ${s.name}`}>
+            {close => <>
+              {s.role === "owner" && <button className="kitem" onClick={() => { close(); p.onShare(s.id); }}>Share…</button>}
+              {s.role === "owner" && <button className="kitem" onClick={() => { close(); setRenaming(s.id); setRenameTo(s.name); }}>Rename</button>}
+              <button className="kitem" disabled={busy === s.id} onClick={() => { close(); duplicate(s); }}>Make a copy</button>
+              {s.role === "owner"
+                ? own.length > 1 && <ConfirmButton className="kitem danger" label="Delete…" confirmLabel="Tap again to delete" onConfirm={() => { close(); remove(s); }} />
+                : <ConfirmButton className="kitem danger" label="Leave" confirmLabel="Tap again to leave" onConfirm={() => { close(); leave(s); }} />}
+            </>}
+          </RowMenu>
+        </>}
+      </li>
+    );
+  };
 
   return <>
     <Profile user={p.user} notify={notify} />
-    <h3>Your save files</h3>
-    <ul className="slist">{own.length ? own.map(row) : <li className="anote">No save files yet.</li>}</ul>
-    <form className="inline" onSubmit={create}>
-      <input className="sel" placeholder="New save file name" maxLength={80} required value={newName} onChange={e => setNewName(e.target.value)} />
-      <button className="primary sm" type="submit">Create</button>
-    </form>
+    <div className="shead"><h3>Save files</h3>{!creating && <button className="linkbtn" onClick={() => setCreating(true)}>+ New</button>}</div>
+    {creating && (
+      <form className="inline" onSubmit={create}>
+        <input className="sel" aria-label="New save file name" placeholder="Name" maxLength={80} required autoFocus value={newName} onChange={e => setNewName(e.target.value)} />
+        <button className="primary sm" type="submit">Create</button>
+        <button className="linkbtn" type="button" onClick={() => setCreating(false)}>Cancel</button>
+      </form>
+    )}
+    <ul className="slist">{own.map(row)}</ul>
     {shared.length > 0 && <><h3>Shared with you</h3><ul className="slist">{shared.map(row)}</ul></>}
     {p.guestData && active?.role === "owner" && (
-      <div className="importbox">
-        <p>This browser has checkmarks from before you signed in.</p>
-        <button className="linkbtn" onClick={p.onCopyGuest}>Copy them into “{active.name}”</button>
-      </div>
+      <p className="importbox">Checkmarks from before you signed in are saved in this browser. <button className="linkbtn" onClick={p.onCopyGuest}>Add them to “{active.name}”</button></p>
     )}
-    <h3>Import</h3>
-    <ImportBox lists={p.lists} curId={p.curId} active={active} onImport={p.onImport} notify={notify} />
-    {p.isAdmin && <><h3>Admin</h3><p className="alinks"><button className="linkbtn" onClick={p.onErrors}>View error log</button></p></>}
-    <p className="alinks"><button className="linkbtn" onClick={signOut}>Sign out</button></p>
+    <div className="afoot">
+      <button className="linkbtn" onClick={() => p.go("import")}>Import</button>
+      {p.isAdmin && <button className="linkbtn" onClick={() => p.go("errors")}>Error log</button>}
+      <button className="linkbtn" onClick={signOut}>Sign out</button>
+    </div>
     <DeleteAccount notify={notify} onDeleted={p.onClose} />
   </>;
+}
+
+/** A small ⋮ dropdown for one row. */
+function RowMenu({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("click", onDoc); document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("click", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+  return (
+    <span className="rowmenu" ref={wrap}>
+      <button className="kbtn" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>⋮</button>
+      {open && <div className="rmenu" role="menu">{children(() => setOpen(false))}</div>}
+    </span>
+  );
 }
 
 function Profile({ user, notify }: { user: User; notify: Notify }) {
@@ -284,19 +328,20 @@ function Profile({ user, notify }: { user: User; notify: Notify }) {
     if (error) return notify.error("update profile", error, "Couldn't save your name");
     setName(v); setEditing(false); notify.ok("Name saved.");
   };
+  const shown = name || user.email || "";
   return (
     <div className="who">
+      <span className="wav" aria-hidden="true">{shown[0]?.toUpperCase()}</span>
       {editing ? (
         <form className="inline" onSubmit={save}>
-          <input className="sel" aria-label="Display name" placeholder="Display name" maxLength={60} autoFocus value={draft} onChange={e => setDraft(e.target.value)} />
+          <input className="sel" aria-label="Display name" placeholder="Name others see" maxLength={60} autoFocus value={draft} onChange={e => setDraft(e.target.value)} />
           <button className="primary sm" type="submit">Save</button>
           <button className="linkbtn" type="button" onClick={() => setEditing(false)}>Cancel</button>
         </form>
       ) : <>
-        Signed in as <b>{name || user.email}</b>{name && <> · {user.email}</>}{" "}
-        <button className="linkbtn" onClick={() => { setDraft(name ?? ""); setEditing(true); }}>Edit name</button>
+        <span className="wname"><b>{shown}</b>{name && <small>{user.email}</small>}</span>
+        <button className="iconbtn" aria-label="Edit your name" title="Edit your name" onClick={() => { setDraft(name ?? ""); setEditing(true); }}>✎</button>
       </>}
-      <small className="anote">People you share with see this name.</small>
     </div>
   );
 }
@@ -310,13 +355,13 @@ function DeleteAccount({ notify, onDeleted }: { notify: Notify; onDeleted: () =>
     await sb.auth.signOut({ scope: "local" });
     onDeleted(); notify.ok("Your account and save files were deleted.");
   };
-  if (!open) return <p className="alinks"><button className="linkbtn danger" onClick={() => setOpen(true)}>Delete my account…</button></p>;
+  if (!open) return <p className="adanger"><button className="linkbtn" onClick={() => setOpen(true)}>Delete account</button></p>;
   return (
     <form className="dangerbox aform" onSubmit={del}>
-      <p>This permanently deletes your account, every save file you own (including for people you shared them with), and removes you from saves shared with you. It can't be undone.</p>
+      <p>Deletes your account and every save file you own, including for anyone you shared with. This can't be undone.</p>
       <label>Type DELETE to confirm<input className="sel" value={typed} onChange={e => setTyped(e.target.value)} autoComplete="off" /></label>
       <span className="sacts">
-        <button className="primary sm danger" type="submit" disabled={typed !== "DELETE" || busy}>{busy ? "Deleting…" : "Delete my account"}</button>
+        <button className="primary sm danger" type="submit" disabled={typed !== "DELETE" || busy}>{busy ? "Deleting…" : "Delete account"}</button>
         <button className="linkbtn" type="button" onClick={() => { setOpen(false); setTyped(""); }}>Cancel</button>
       </span>
     </form>
@@ -372,7 +417,7 @@ function Share({ save, back, notify, reloadSaves }: { save: SaveFile; back: () =
   };
 
   return <>
-    <p className="alinks"><button className="linkbtn" onClick={back}>‹ Back to save files</button></p>
+    <p className="alinks"><button className="linkbtn" onClick={back}>‹ Back</button></p>
     <h3>Share “{save.name}”</h3>
     <form className="aform" onSubmit={invite}>
       <label>Email<input className="sel" type="email" required placeholder="friend@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
@@ -488,7 +533,7 @@ function ImportBox({ lists, curId, active, onImport, notify }: {
 
   return (
     <div className="aform">
-      <p className="anote">Bring in an Excel workbook (.xlsx, every tab at once) or a CSV, such as your old Google Sheet (File → Download → Microsoft Excel) or this site's download. Each tab needs a <b>Collected</b> column (TRUE/FALSE) and a <b>#</b> or <b>Location</b> column. Importing only adds checkmarks.</p>
+      <p className="anote">Add checkmarks from an Excel (.xlsx) or CSV file, like your old Google Sheet. Tabs are matched to lists automatically. Nothing gets unchecked.</p>
       <label>File<input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => pick(e.target.files?.[0])} /></label>
       {sheets && <>
         <ul className="implist">
