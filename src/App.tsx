@@ -21,7 +21,7 @@ const wide = () => window.innerWidth >= 900;
 export default function App() {
   const notify = useNotify();
   const { data: ref, error: refError, retry } = useReference();
-  const { user, recovering, setRecovering } = useAuth(notify);
+  const { user, recovering, setRecovering, welcoming, setWelcoming } = useAuth(notify);
   const saves = useSaves(user, ref?.lists ?? null, notify);
   const [settings, setSettings] = useSettings(user, saves.activeId);
 
@@ -207,6 +207,7 @@ export default function App() {
     {!srcOpen && <button className="fab" aria-label="Show sources" aria-haspopup="dialog" onClick={() => setSrcOpen(true)}>?</button>}
     {ref && list && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={list.id} />}
     {list && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
+      welcoming={welcoming} onWelcomed={() => setWelcoming(false)}
       lists={lists} curId={list.id} saves={saves.saves} active={active} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
       guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
   </>;

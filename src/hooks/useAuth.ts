@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { sb } from "../lib/supabase";
+import { arrivedVia, sb } from "../lib/supabase";
 import { reportError } from "../lib/errors";
 import type { Notify } from "../components/Notify";
 
-/** Signed-in user (or null), whether the session check finished, and password-recovery mode. */
+/**
+ * Signed-in user (or null), whether the session check finished, password-recovery mode,
+ * and whether they just arrived from an invite email (so we can welcome them and finish setup).
+ */
 export function useAuth(notify: Notify) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [recovering, setRecovering] = useState(false);
+  const [welcoming, setWelcoming] = useState(arrivedVia === "invite");
 
   useEffect(() => {
     // A failed Google sign-in or an expired email link comes back as ?error=… or #error=… in the URL.
@@ -34,5 +38,5 @@ export function useAuth(notify: Notify) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { user, ready, recovering, setRecovering };
+  return { user, ready, recovering, setRecovering, welcoming, setWelcoming };
 }

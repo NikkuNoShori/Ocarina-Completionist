@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Choose a new password</title>
+</head>
+<body style="margin:0;padding:0;background:#eff3e4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#eff3e4;">Reset your Ocarina Completionist password.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eff3e4;">
+<tr><td align="center" style="padding:32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+    <tr><td style="padding:0 4px 14px;font-family:Georgia,'Times New Roman',serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:#2d4a1e;font-weight:bold;">
+      &#9834;&nbsp; Ocarina Completionist
+    </td></tr>
+    <tr><td style="background:#ffffff;border:1px solid #d3dbc0;border-radius:14px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="height:6px;background:#2d4a1e;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="padding:32px 32px 8px;">
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#4a7c1c;font-weight:bold;">Password reset</div>
+          <h1 style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;color:#1b2a1c;font-weight:bold;">Choose a new password</h1>
+        </td></tr>
+        <tr><td style="padding:12px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2a1c;">
+          <p style="margin:0;">Someone (hopefully you) asked to reset the password for <b>{{ .Email }}</b>. Tap the button and you'll be asked for a new one. Your save files aren't affected.</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px 8px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="border-radius:10px;background:#2d4a1e;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">Reset password</a>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:8px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;color:#586a55;">This link works once and expires soon. Didn't ask for this? Ignore it; your password stays the same.</td></tr>
+        <tr><td style="padding:20px 32px 28px;">
+          <div style="border-top:1px solid #d3dbc0;padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#586a55;">
+            Button not working? Copy this link into your browser:<br>
+            <a href="{{ .ConfirmationURL }}" style="color:#4a7c1c;word-break:break-all;">{{ .ConfirmationURL }}</a>
+          </div>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:16px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#586a55;text-align:center;">
+      Sent because a password reset was requested for {{ .Email }}.<br>
+      <a href="{{ .SiteURL }}" style="color:#586a55;">Ocarina Completionist</a> is an unofficial fan project, not affiliated with Nintendo.
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

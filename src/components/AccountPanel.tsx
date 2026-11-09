@@ -20,6 +20,7 @@ async function fnError(error: unknown): Promise<unknown> {
 
 interface Props {
   open: boolean; onClose: () => void; user: User | null; recovering: boolean; onRecovered: () => void;
+  welcoming: boolean; onWelcomed: () => void;
   lists: ChecklistList[]; curId: string; saves: SaveFile[]; active: SaveFile | null;
   onSwitch: (id: string) => void; reloadSaves: () => Promise<SaveFile[] | null>;
   guestData: boolean; onCopyGuest: () => Promise<void>;
@@ -39,16 +40,62 @@ export function AccountPanel(p: Props) {
 
   let body;
   const shareSave = p.saves.find(s => s.id === shareId);
+  const welcome = p.welcoming && !!p.user && !p.recovering;
   if (p.recovering && p.user) body = <Recover user={p.user} notify={notify} done={() => { p.onRecovered(); notify.ok("Password updated."); setView("main"); }} />;
+  else if (welcome) body = <Welcome user={p.user!} saves={p.saves} notify={notify} onSwitch={p.onSwitch} done={p.onWelcomed} />;
   else if (!p.user) body = <SignIn view={view} go={setView} notify={notify} />;
   else if (view === "share" && shareSave) body = <Share save={shareSave} back={() => setView("main")} notify={notify} reloadSaves={p.reloadSaves} />;
   else if (view === "errors" && isAdmin) body = <ErrorLog back={() => setView("main")} notify={notify} />;
   else body = <Main {...p} user={p.user} notify={notify} isAdmin={isAdmin} onShare={id => { setShareId(id); setView("share"); }} onErrors={() => setView("errors")} />;
 
   return (
-    <Modal open={p.open || p.recovering} onClose={p.onClose} title={p.user ? "Account" : "Sign in"} labelId="acctTitle" className="acctpanel" center>
+    <Modal open={p.open || p.recovering || welcome} onClose={welcome ? p.onWelcomed : p.onClose} title={welcome ? "Welcome" : p.user ? "Account" : "Sign in"} labelId="acctTitle" className="acctpanel" center>
       {body}
     </Modal>
+  );
+}
+
+/**
+ * First visit from an invite email. They're already signed in by the link; this lets them
+ * pick a display name and a password (so they can sign in again by email), then opens the shared playthrough.
+ */
+function Welcome({ user, saves, notify, onSwitch, done }: {
+  user: User; saves: SaveFile[]; notify: Notify; onSwitch: (id: string) => void; done: () => void;
+}) {
+  const meta = (user.user_metadata ?? {}) as { invited_by?: string; save_name?: string; save_id?: string; role?: string };
+  const shared = saves.find(s => s.id === meta.save_id) ?? saves.find(s => s.role !== "owner");
+  const [name, setName] = useState(""), [pw, setPw] = useState(""), [busy, setBusy] = useState(false);
+  useEffect(() => {
+    sb.from("profiles").select("display_name").eq("id", user.id).maybeSingle().then(({ data }) => setName(data?.display_name ?? ""));
+  }, [user.id]);
+  const open = () => { if (shared) onSwitch(shared.id); done(); };
+  const submit = async (e: FormEvent) => {
+    e.preventDefault(); setBusy(true);
+    try {
+      if (pw) {
+        const { error } = await sb.auth.updateUser({ password: pw });
+        if (error) return notify.error("welcome password", error, "Couldn't set your password");
+      }
+      const { error } = await sb.from("profiles").update({ display_name: name.trim().slice(0, 60) || null }).eq("id", user.id);
+      if (error) return notify.error("welcome name", error, "Couldn't save your name");
+      notify.ok(pw ? "You're all set. Next time, sign in with your email and this password." : "You're all set.");
+      open();
+    } finally { setBusy(false); }
+  };
+  const what = meta.save_name ?? shared?.name;
+  return (
+    <form className="aform welcome" onSubmit={submit}>
+      <p className="wlead">
+        {meta.invited_by ? <><b>{meta.invited_by}</b> shared </> : "You've been invited to "}
+        {what ? <>the playthrough <b>“{what}”</b></> : "a playthrough"} with you
+        {meta.role ? <> ({meta.role === "viewer" ? "view only" : "you can check things off too"})</> : null}.
+      </p>
+      <p className="anote">You're signed in as <b>{user.email}</b>. Two quick things and you're in:</p>
+      <label>Your name<input className="sel" maxLength={60} placeholder="What should others see?" value={name} onChange={e => setName(e.target.value)} autoComplete="name" /></label>
+      <label>Choose a password<input className="sel" type="password" minLength={8} placeholder="At least 8 characters" value={pw} onChange={e => setPw(e.target.value)} autoComplete="new-password" /></label>
+      <p className="anote">Prefer Google? Skip the password; next time use <b>Continue with Google</b> with this same email.</p>
+      <button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : what ? `Open “${what}”` : "Continue"}</button>
+    </form>
   );
 }
 

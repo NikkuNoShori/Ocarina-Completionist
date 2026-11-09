@@ -350,3 +350,5 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .implist li>span{flex:1 1 160px;min-width:0}
 .implist small{display:block;color:var(--muted);font-size:.8rem}
 .implist .impres{flex-basis:100%;color:var(--fg)}
+.welcome .wlead{font-size:1.02rem;color:var(--fg);margin:2px 0 0;line-height:1.5}
+.welcome .wlead b{color:var(--gold)}
