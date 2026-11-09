@@ -3,19 +3,43 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>Ocarina of Time Checklists</title>
+    <title>Ocarina Completionist</title>
     <meta name="description" content="Track every Gold Skulltula, Heart Piece, Magic Bean, Great Fairy, song, upgrade and bottle in the Switch 2 Ocarina of Time remake." />
+    <meta name="theme-color" content="#eff3e4" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@700&family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@600;700&family=Nunito+Sans:wght@400;600;700&family=Cormorant+SC:wght@600;700&family=EB+Garamond:wght@400;500;600&family=Marcellus+SC&family=Source+Sans+3:wght@400;600;700&family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-    <!-- Apply the saved theme before first paint so there's no flash -->
+    <!--
+      Apply the saved theme before first paint so there's no flash, and load only that theme's two fonts.
+      window.ootFonts(skin) is also called by the app when the theme changes.
+    -->
     <script>
-      try {
-        var d = document.documentElement, g = function (k) { return JSON.parse(localStorage.getItem(k)); };
-        d.dataset.skin = g("oot-skin") || "kokiri";
-        d.dataset.theme = g("oot-mode") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        d.dataset.density = g("oot-density") || "comfortable";
-      } catch (e) { document.documentElement.dataset.skin = "kokiri"; }
+      (function () {
+        var FONTS = {
+          kokiri: "Alegreya+SC:wght@700&family=Alegreya+Sans:wght@400;500;700",
+          zora: "Cinzel:wght@600;700&family=Nunito+Sans:wght@400;600;700",
+          golden: "Cormorant+SC:wght@600;700&family=EB+Garamond:wght@400;500;600",
+          royal: "Marcellus+SC&family=Source+Sans+3:wght@400;600;700",
+          hyrule: "Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600;700",
+          sheikah: "Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600"
+        };
+        window.ootFonts = function (skin) {
+          var id = "font-" + skin;
+          if (!FONTS[skin] || document.getElementById(id)) return;
+          var l = document.createElement("link");
+          l.id = id; l.rel = "stylesheet";
+          l.href = "https://fonts.googleapis.com/css2?family=" + FONTS[skin] + "&display=swap";
+          document.head.appendChild(l);
+        };
+        var d = document.documentElement, skin = "kokiri";
+        try {
+          var g = function (k) { return JSON.parse(localStorage.getItem(k)); };
+          skin = g("oot-skin") || "kokiri";
+          d.dataset.theme = g("oot-mode") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          d.dataset.density = g("oot-density") || "comfortable";
+        } catch (e) { /* storage blocked: defaults */ }
+        d.dataset.skin = skin;
+        window.ootFonts(skin);
+      })();
     </script>
   </head>
   <body>

@@ -392,3 +392,51 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .taction{flex:0 0 auto;align-self:center;background:var(--bg);color:var(--fg);border:0;border-radius:6px;padding:5px 12px;font:700 .85rem var(--body);cursor:pointer}
 .taction:hover{opacity:.9}
 .taction:focus-visible{outline:2px solid var(--bg);outline-offset:2px}
+/* ---------- Phones: each row becomes a card, no sideways scrolling ---------- */
+@media (max-width:640px){
+  .tablebox{overflow-x:visible}
+  table{min-width:0}
+  thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  tbody,tr.area,tr.area td,tr.empty,tr.empty td{display:block}
+  tr.area td{padding:18px 0 6px}
+  tbody tr:not(.area):not(.empty){
+    display:grid;grid-template-columns:36px 30px auto auto auto 1fr;
+    grid-template-areas:"c n loc loc loc loc" ". . lv age time ." ". . req req req req";
+    column-gap:8px;row-gap:6px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)
+  }
+  tbody tr:not(.area):not(.empty) td{display:block;padding:0;border:0;width:auto}
+  td.c{grid-area:c;align-self:start}
+  td.n{grid-area:n;align-self:start;padding-top:1px}
+  td.loc{grid-area:loc}
+  td.lvc{grid-area:lv}
+  td.lvc:empty{display:none}
+  td.agec{grid-area:age;display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 8px}
+  td.agec .afirst{display:inline;margin:0}
+  td.timec{grid-area:time}
+  td.req{grid-area:req;font-size:.88rem}
+}
+/* Touch screens: no iOS zoom on focus (needs 16px), bigger checkboxes */
+@media (pointer:coarse){
+  .sel,.ed,input[type="search"],input[type="email"],input[type="password"],select,textarea{font-size:16px!important}
+  .chk{width:24px;height:24px}
+  :root[data-density="compact"] .chk{width:22px;height:22px}
+  .kitem{padding-block:11px}
+}
+@media (max-width:640px){
+  tbody tr:not(.area):not(.empty){grid-template-columns:36px 30px auto auto auto minmax(0,1fr)}
+  tbody td{min-width:0}
+  .ed,select.ed{max-width:100%}
+  /* Editing on a phone: one field per line so nothing pushes the row off screen */
+  table.editing tbody tr:not(.area):not(.empty){grid-template-columns:36px 30px minmax(0,1fr);grid-template-areas:"c n loc" ". . lv" ". . age" ". . time" ". . req"}
+  table.editing td.lvc:empty{display:block}
+  table.editing select.ed,table.editing input.ed.lv{width:100%}
+  table.editing td.agec{flex-direction:column;align-items:stretch}
+  /* Compact header: smaller title, account button shows just the avatar */
+  h1{font-size:1.45rem}
+  :root[data-skin="golden"] h1{font-size:1.6rem}
+  .titlebar{flex-wrap:nowrap}
+  .tleft{flex:1 1 auto}
+  .tactions{flex:0 0 auto}
+  .acctbtn{padding:4px}
+  .acctbtn span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+}

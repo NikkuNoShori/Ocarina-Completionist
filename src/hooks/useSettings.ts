@@ -25,6 +25,10 @@ export function useSettings(user: User | null, activeSaveId: string | null) {
     const root = document.documentElement;
     root.dataset.skin = settings.theme; root.dataset.theme = settings.mode; root.dataset.density = settings.density;
     ls.set("oot-skin", settings.theme); ls.set("oot-mode", settings.mode); ls.set("oot-density", settings.density);
+    // Fonts load per theme (see index.html); the browser bar matches the page background on phones
+    (window as unknown as { ootFonts?: (s: string) => void }).ootFonts?.(settings.theme);
+    const bg = getComputedStyle(root).getPropertyValue("--bg").trim();
+    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
   }, [settings]);
 
   // Load the account's saved settings once per sign-in, before anything is written back

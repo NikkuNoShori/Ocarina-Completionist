@@ -18,7 +18,7 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
 
   return (
     <div className="tablebox">
-      <table>
+      <table className={editing ? "editing" : undefined}>
         <thead><tr><th></th><th>#</th><th>Location</th><th>Map Level</th><th>Link</th><th>Time</th><th>{list.req_label}</th></tr></thead>
         <tbody>
           {!rows.length && <tr className="empty"><td colSpan={7}>{emptyText}</td></tr>}
@@ -54,7 +54,7 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                           defaultValue={r.lv === "?" ? "" : r.lv} onBlur={e => onEdit(r.n, "lv", e.target.value.trim())} />
                       : r.lv === "?" ? <span className="lvq" title="Not given in the guides yet">?</span> : r.lv ? <span className="lvtag">{r.lv}</span> : null}
                   </td>
-                  <td>
+                  <td className="agec">
                     {editing ? <>
                       <select className="ed" id={`${P}-a${r.n}`} aria-label={`Link age for #${r.n}`} value={r.age} onChange={e => onEdit(r.n, "age", e.target.value)}>
                         {AGES.map(a => <option key={a}>{a}</option>)}
@@ -65,7 +65,7 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                       {r.af && r.age !== "Adult" && <span className="afirst" title="Needs a song learned as adult, then travel back to childhood">Adult first</span>}
                     </>}
                   </td>
-                  <td>
+                  <td className="timec">
                     {editing
                       ? <select className="ed" id={`${P}-t${r.n}`} aria-label={`Time for #${r.n}`} value={r.time} onChange={e => onEdit(r.n, "time", e.target.value)}>{TIMES.map(t => <option key={t}>{t}</option>)}</select>
                       : <span className={"pill " + r.time}>{r.time}</span>}
