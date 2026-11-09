@@ -5,6 +5,7 @@ import { hasGuestData, useSaves } from "./hooks/useSaves";
 import { useSettings } from "./hooks/useSettings";
 import { friendly } from "./lib/errors";
 import { ageOK, applyEdit, cloneState, countGot, eff, emptyState, timeOK } from "./lib/rows";
+import { downloadCsv, downloadXlsx } from "./lib/sheets";
 import { ls } from "./lib/storage";
 import type { AgeFilter, ListState, Order, RowEdit, TimeFilter } from "./lib/types";
 import { AccountPanel } from "./components/AccountPanel";
@@ -130,16 +131,17 @@ export default function App() {
   };
   const resetAll = () => { if (draft) setDraft({ ...draft, after: { ...draft.after, O: {} } }); };
 
-  const downloadCsv = () => {
+  // Downloads include unsaved edits while editing
+  const liveProgress = list && draft ? { ...saves.progress, [list.id]: draft.after } : saves.progress;
+  const onCsv = () => {
     if (!list) return;
+    try { downloadCsv(list, liveProgress); } catch (e) { notify.error("download csv", e, "Couldn't create the CSV"); }
+  };
+  const onXlsx = async () => {
     try {
-      const cell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-      const rows = [["#", "Area", "Location", "Map Level", "Link", "Adult first", "Time", "Notes", "Collected"],
-        ...all.map(r => [r.n, r.a, r.l, r.lv === "?" ? "" : r.lv, r.age, r.af ? "TRUE" : "FALSE", r.time, r.note, state.got.has(r.n) ? "TRUE" : "FALSE"])];
-      const blob = new Blob([rows.map(r => r.map(cell).join(",")).join("\n")], { type: "text/csv" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${list.name}.csv`;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    } catch (e) { notify.error("download csv", e, "Couldn't create the CSV"); }
+      const name = (user && saves.active ? saves.active.name : "Ocarina Completionist").replace(/[\\/:*?"<>|]/g, " ");
+      await downloadXlsx(lists, liveProgress, `${name}.xlsx`);
+    } catch (e) { notify.error("download xlsx", e, "Couldn't create the Excel file"); }
   };
 
   if (refError) return (
@@ -183,7 +185,7 @@ export default function App() {
         search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
         editing={editing} onDone={doneEdit} onCancel={cancelEdit}
         hideDone={hideDone} setHideDone={setHideDone}
-        canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={downloadCsv}
+        canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
         order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups}
         settings={settings} setSettings={setSettings}
       />}

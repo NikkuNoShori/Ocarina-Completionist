@@ -11,7 +11,7 @@ export function FilterBar(p: {
   search: string; setSearch: (s: string) => void; areaNames: string[];
   editing: boolean; onDone: () => void; onCancel: () => void;
   hideDone: boolean; setHideDone: (b: boolean) => void;
-  canEdit: boolean; onStartEdit: () => void; onCsv: () => void;
+  canEdit: boolean; onStartEdit: () => void; onCsv: () => void; onXlsx: () => void;
   order: Order; setOrder: (o: Order) => void; sortable: boolean; hasItemSort: boolean;
   settings: Settings; setSettings: (s: Settings) => void;
 }) {
@@ -58,6 +58,7 @@ export function FilterBar(p: {
             </label>
             {p.canEdit && !p.editing && <button className="kitem" role="menuitem" onClick={() => { setOpen(false); p.onStartEdit(); }}>Edit details</button>}
             <button className="kitem" role="menuitem" onClick={() => { setOpen(false); p.onCsv(); }}>Download this list (CSV)</button>
+            <button className="kitem" role="menuitem" onClick={() => { setOpen(false); p.onXlsx(); }}>Download all lists (Excel)</button>
             {p.sortable && (
               <div className="ksec" role="group" aria-label="Sort">
                 <div className="klabel">Sort</div>

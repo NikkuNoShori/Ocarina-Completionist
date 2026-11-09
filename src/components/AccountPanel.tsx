@@ -4,6 +4,7 @@ import { sb } from "../lib/supabase";
 import type { ChecklistList, SaveFile } from "../lib/types";
 import { useNotify, type Notify } from "./Notify";
 import { ConfirmButton, Modal } from "./ui";
+import { ANY_LIST, guessList, matchAnyList, matchRows, namesMatch, readSpreadsheet, type ParsedSheet } from "../lib/sheets";
 
 type View = "signin" | "signup" | "forgot" | "main" | "share" | "errors";
 const redirectTo = () => window.location.origin + window.location.pathname;
@@ -120,24 +121,9 @@ function Recover({ user, done, notify }: { user: User; done: () => void; notify:
   );
 }
 
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = []; let row: string[] = [], f = "", q = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (q) { if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
-    else if (c === '"') q = true;
-    else if (c === ",") { row.push(f); f = ""; }
-    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
-    else f += c;
-  }
-  if (f || row.length) { row.push(f); rows.push(row); }
-  return rows.filter(r => r.some(x => x.trim()));
-}
-
 function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare: (id: string) => void; onErrors: () => void }) {
   const { saves, active, notify } = p;
   const [newName, setNewName] = useState(""), [renaming, setRenaming] = useState<string | null>(null), [renameTo, setRenameTo] = useState("");
-  const [csvList, setCsvList] = useState(p.curId), [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const own = saves.filter(s => s.role === "owner"), shared = saves.filter(s => s.role !== "owner");
 
@@ -182,19 +168,6 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare
       if (bad) { await sb.from("save_files").delete().eq("id", n.id); return notify.error("copy save write", bad.error, "Couldn't finish copying"); }
       await p.reloadSaves(); p.onSwitch(n.id); notify.ok(`Copied to “${n.name}”.`);
     } finally { setBusy(null); }
-  };
-  const importCsv = async (e: FormEvent) => {
-    e.preventDefault(); if (!file) return;
-    const L = p.lists.find(x => x.id === csvList); if (!L) return;
-    let rows: string[][];
-    try { rows = parseCsv(await file.text()); } catch (err) { return notify.error("read csv", err, "Couldn't read that file"); }
-    const head = (rows.shift() ?? []).map(h => h.trim().toLowerCase());
-    const iN = head.indexOf("#"), iC = head.indexOf("collected");
-    if (iN < 0 || iC < 0) return notify.info("That file needs a # column and a Collected column.");
-    const valid = new Set(L.rows.map(r => r.n));
-    const on = rows.filter(r => /^true$/i.test((r[iC] ?? "").trim())).map(r => +r[iN]).filter(n => valid.has(n));
-    if (!on.length) return notify.info("No collected rows found in that file.");
-    if (await p.onImport(L.id, on)) notify.ok(`Imported ${on.length} checkmarks into ${L.name}.`);
   };
   const signOut = async () => {
     const { error } = await sb.auth.signOut();
@@ -242,12 +215,7 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; onShare
       </div>
     )}
     <h3>Import</h3>
-    <form className="aform" onSubmit={importCsv}>
-      <p className="anote">Bring in a CSV from the old Google Sheet or this site's download. It needs a <b>#</b> column and a <b>Collected</b> column (TRUE/FALSE).</p>
-      <label>List<select className="sel" value={csvList} onChange={e => setCsvList(e.target.value)}>{p.lists.map(L => <option key={L.id} value={L.id}>{L.name}</option>)}</select></label>
-      <label>CSV file<input type="file" accept=".csv,text/csv" required onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>
-      <button className="primary sm" type="submit" disabled={!active || active.role === "viewer"}>Import into “{active?.name ?? ""}”</button>
-    </form>
+    <ImportBox lists={p.lists} curId={p.curId} active={active} onImport={p.onImport} notify={notify} />
     {p.isAdmin && <><h3>Admin</h3><p className="alinks"><button className="linkbtn" onClick={p.onErrors}>View error log</button></p></>}
     <p className="alinks"><button className="linkbtn" onClick={signOut}>Sign out</button></p>
     <DeleteAccount notify={notify} onDeleted={p.onClose} />
@@ -428,4 +396,71 @@ function ErrorLog({ back, notify }: { back: () => void; notify: Notify }) {
       ))}
     </ul>
   </>;
+}
+
+/** Import checkmarks from a .xlsx (every tab) or .csv. Only adds checkmarks; never removes any. */
+function ImportBox({ lists, curId, active, onImport, notify }: {
+  lists: ChecklistList[]; curId: string; active: SaveFile | null; notify: Notify;
+  onImport: (listId: string, ns: number[]) => Promise<boolean>;
+}) {
+  const [sheets, setSheets] = useState<ParsedSheet[] | null>(null);
+  const [map, setMap] = useState<(string | null)[]>([]);
+  const [busy, setBusy] = useState(false);
+  const canWrite = !!active && active.role !== "viewer";
+
+  const pick = async (file: File | undefined) => {
+    setSheets(null); if (!file) return;
+    try {
+      const parsed = await readSpreadsheet(file);
+      setSheets(parsed);
+      // A single CSV/tab with no recognizable name goes to the list you're looking at
+      setMap(parsed.map((s, i) => s.error ? null : guessList(s, lists, i) ?? (parsed.length === 1 ? curId : null)));
+    } catch (e) { notify.error("read spreadsheet", e, "Couldn't read that file"); }
+  };
+  // For each tab: which item numbers it will check, per list
+  const plan = (sheets ?? []).map((s, i) => {
+    if (map[i] === ANY_LIST) { const m = matchAnyList(s, lists); return { byList: m.byList, unmatched: m.unmatched }; }
+    const L = lists.find(x => x.id === map[i]);
+    if (!L) return null;
+    const m = matchRows(s, L, namesMatch(s, L, i) || (sheets!.length === 1));
+    return { byList: new Map([[L.id, m.ns]]), unmatched: m.unmatched };
+  });
+  const count = (p: (typeof plan)[number]) => p ? [...p.byList.values()].reduce((t, ns) => t + ns.length, 0) : 0;
+  const total = plan.reduce((t, p) => t + count(p), 0);
+  const describe = (p: NonNullable<(typeof plan)[number]>) => [...p.byList].map(([id, ns]) => `${ns.length} in ${lists.find(L => L.id === id)?.name}`).join(", ");
+
+  const run = async () => {
+    setBusy(true);
+    const byList = new Map<string, Set<number>>();
+    plan.forEach(p => p?.byList.forEach((ns, id) => ns.forEach(n => (byList.get(id) ?? byList.set(id, new Set()).get(id)!).add(n))));
+    let done = 0;
+    for (const [id, ns] of byList) if (ns.size && await onImport(id, [...ns])) done += ns.size;
+    setBusy(false);
+    if (done) { notify.ok(`Imported ${done} checkmarks into “${active?.name}”.`); setSheets(null); }
+  };
+
+  return (
+    <div className="aform">
+      <p className="anote">Bring in an Excel workbook (.xlsx, every tab at once) or a CSV, such as your old Google Sheet (File → Download → Microsoft Excel) or this site's download. Each tab needs a <b>Collected</b> column (TRUE/FALSE) and a <b>#</b> or <b>Location</b> column. Importing only adds checkmarks.</p>
+      <label>File<input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => pick(e.target.files?.[0])} /></label>
+      {sheets && <>
+        <ul className="implist">
+          {sheets.map((s, i) => (
+            <li key={i}>
+              <span><b>{s.name}</b><small>{s.error ?? `${s.collected.length} collected of ${s.rows} rows`}</small></span>
+              {!s.error && <select className="sel sm" aria-label={`List for ${s.name}`} value={map[i] ?? ""} onChange={e => setMap(m => m.map((v, j) => j === i ? e.target.value || null : v))}>
+                <option value="">Skip this tab</option>
+                <option value={ANY_LIST}>Mixed: match each row to any list</option>
+                {lists.map(L => <option key={L.id} value={L.id}>{L.name}</option>)}
+              </select>}
+              {plan[i] && <small className="impres">{count(plan[i]) ? `Will check ${describe(plan[i]!)}` : "Nothing to check"}{plan[i]!.unmatched ? ` · ${plan[i]!.unmatched} didn't match` : ""}</small>}
+            </li>
+          ))}
+        </ul>
+        <button className="primary sm" disabled={!canWrite || !total || busy} onClick={run}>
+          {busy ? "Importing…" : canWrite ? `Import ${total} checkmarks into “${active?.name ?? ""}”` : "This save file is view only"}
+        </button>
+      </>}
+    </div>
+  );
 }

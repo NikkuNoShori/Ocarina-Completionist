@@ -345,3 +345,8 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .errlist summary small{display:block;color:var(--muted);font-size:.78rem}
 .errlist pre{white-space:pre-wrap;word-break:break-word;font-size:.75rem;color:var(--muted);margin:6px 0 0;max-height:240px;overflow:auto}
 :root[data-skin="royal"][data-theme="dark"] .titlebar{background:#1c2238}
+.implist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.implist li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.implist li>span{flex:1 1 160px;min-width:0}
+.implist small{display:block;color:var(--muted);font-size:.8rem}
+.implist .impres{flex-basis:100%;color:var(--fg)}
