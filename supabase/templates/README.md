@@ -1,6 +1,6 @@
 # Supabase Auth email templates
 
-Paste each file into **Supabase Dashboard → Authentication → Emails → Templates**, with the subject below.
+Edit `build.py` and run `python3 supabase/templates/build.py` to regenerate. Paste each file into **Supabase Dashboard → Authentication → Emails → Templates**, with the subject below.
 They use Supabase's template variables (`{{ .ConfirmationURL }}`, `{{ .Email }}`, `{{ .Data.* }}`), so paste them as-is.
 
 | Template in Supabase | File | Subject |

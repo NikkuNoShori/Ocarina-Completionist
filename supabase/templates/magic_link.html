@@ -6,44 +6,60 @@
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <title>Here's your sign-in link</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
 </head>
-<body style="margin:0;padding:0;background:#eff3e4;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#eff3e4;">Your sign-in link for Ocarina Completionist.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eff3e4;">
-<tr><td align="center" style="padding:32px 16px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
-    <tr><td style="padding:0 4px 14px;font-family:Georgia,'Times New Roman',serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:#2d4a1e;font-weight:bold;">
-      &#9834;&nbsp; Ocarina Completionist
+<body style="margin:0;padding:0;background:#0e1733;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#0e1733;">Your sign-in link for Ocarina Completionist.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0e1733;">
+<tr><td align="center" style="padding:36px 14px 40px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;">
+
+    <!-- Wordmark -->
+    <tr><td align="center" style="padding:0 0 6px;font-family:'Cinzel',Georgia,'Times New Roman',serif;font-size:22px;letter-spacing:4px;text-transform:uppercase;color:#d4af37;font-weight:700;">
+      Ocarina Completionist
     </td></tr>
-    <tr><td style="background:#ffffff;border:1px solid #d3dbc0;border-radius:14px;overflow:hidden;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr><td style="height:6px;background:#2d4a1e;font-size:0;line-height:0;">&nbsp;</td></tr>
-        <tr><td style="padding:32px 32px 8px;">
-          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#4a7c1c;font-weight:bold;">Sign in</div>
-          <h1 style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;color:#1b2a1c;font-weight:bold;">Here's your sign-in link</h1>
+    <tr><td align="center" style="padding:0 0 22px;"><table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td width="90" style="border-top:1px solid #aab4c8;font-size:0;line-height:0;">&nbsp;</td><td style="padding:0 10px;font-family:'Cinzel',Georgia,'Times New Roman',serif;font-size:12px;line-height:12px;color:#d4af37;">&#9670;</td><td width="90" style="border-top:1px solid #aab4c8;font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>
+
+    <!-- Card: gold outer frame, silver inner frame -->
+    <tr><td style="border:2px solid #d4af37;border-radius:10px;padding:4px;background:#0e1733;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #aab4c8;border-radius:7px;background:#f7f8fb;">
+
+        <!-- Royal header band -->
+        <tr><td align="center" style="background:#1b2b63;background-image:linear-gradient(180deg,#24387d,#1b2b63);border-radius:6px 6px 0 0;border-bottom:3px solid #d4af37;padding:30px 28px 26px;">
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#dfe4ee;font-weight:bold;">&#9670;&nbsp; Sign in &nbsp;&#9670;</div>
+          <h1 style="margin:12px 0 0;font-family:'Cinzel',Georgia,'Times New Roman',serif;font-size:26px;line-height:1.3;color:#d4af37;font-weight:700;letter-spacing:.5px;">Here's your sign-in link</h1>
         </td></tr>
-        <tr><td style="padding:12px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2a1c;">
+
+        <!-- Body -->
+        <tr><td style="padding:28px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.65;color:#1c2440;">
           <p style="margin:0;">Tap the button to sign in to <b>Ocarina Completionist</b> as <b>{{ .Email }}</b>.</p>
         </td></tr>
-        <tr><td style="padding:24px 32px 8px;">
+
+        <!-- Button -->
+        <tr><td align="center" style="padding:28px 32px 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td style="border-radius:10px;background:#2d4a1e;">
-              <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">Sign in</a>
+            <td style="border-radius:6px;background:#d4af37;background-image:linear-gradient(180deg,#e6c65a,#d4af37 55%,#a8841f);border:1px solid #a8841f;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 34px;font-family:'Cinzel',Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0e1733;text-decoration:none;border-radius:6px;">Sign in</a>
             </td>
           </tr></table>
         </td></tr>
-        <tr><td style="padding:8px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;color:#586a55;">This link works once and expires soon.</td></tr>
-        <tr><td style="padding:20px 32px 28px;">
-          <div style="border-top:1px solid #d3dbc0;padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#586a55;">
+        <tr><td align="center" style="padding:10px 36px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;color:#5a6382;">This link works once and expires soon.</td></tr>
+
+        <!-- Fallback link -->
+        <tr><td style="padding:24px 32px 28px;">
+          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td width="160" style="border-top:1px solid #dfe4ee;font-size:0;line-height:0;">&nbsp;</td><td style="padding:0 10px;font-family:'Cinzel',Georgia,'Times New Roman',serif;font-size:12px;line-height:12px;color:#aab4c8;">&#9670;</td><td width="160" style="border-top:1px solid #dfe4ee;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+          <div style="padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#5a6382;text-align:center;">
             Button not working? Copy this link into your browser:<br>
-            <a href="{{ .ConfirmationURL }}" style="color:#4a7c1c;word-break:break-all;">{{ .ConfirmationURL }}</a>
+            <a href="{{ .ConfirmationURL }}" style="color:#24387d;word-break:break-all;">{{ .ConfirmationURL }}</a>
           </div>
         </td></tr>
       </table>
     </td></tr>
-    <tr><td style="padding:16px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#586a55;text-align:center;">
+
+    <!-- Footer -->
+    <tr><td align="center" style="padding:22px 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#aab4c8;">
       Sent because a sign-in link was requested for {{ .Email }}. If that wasn't you, ignore this email.<br>
-      <a href="{{ .SiteURL }}" style="color:#586a55;">Ocarina Completionist</a> is an unofficial fan project, not affiliated with Nintendo.
+      <a href="{{ .SiteURL }}" style="color:#d4af37;text-decoration:none;">Ocarina Completionist</a> is an unofficial fan project, not affiliated with Nintendo.
     </td></tr>
   </table>
 </td></tr>
