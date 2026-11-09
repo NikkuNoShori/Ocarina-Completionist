@@ -1,7 +1,8 @@
 // Share a save file by email.
 // The caller must own the save.
 //  - Someone with an account is added right away. A database trigger gives them an in-app notice.
-//  - Someone new gets the Supabase "Invite user" email and joins the save when they accept it.
+//  - Someone new (or invited but not yet accepted) gets the Supabase "Invite user" email and joins the save
+//    the first time they sign in.
 // Re-sharing to the same email updates their role (and re-sends the invite email if they haven't joined yet).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
@@ -54,7 +55,17 @@ Deno.serve(async (req) => {
   }
   const can = role === "editor" ? "edit" : "view";
 
+  // Supabase creates the account as soon as an invite is sent, so a profile can exist for someone
+  // who never accepted. Only treat them as an existing user once they've confirmed their email;
+  // otherwise send (or re-send) the invite email below.
+  let confirmed = false;
   if (existing) {
+    const { data: u, error: uErr } = await admin.auth.admin.getUserById(existing.id);
+    if (uErr) console.error("share-save getUser", uErr.message);
+    confirmed = !!u?.user?.email_confirmed_at;
+  }
+
+  if (existing && confirmed) {
     const { error: memErr } = await admin.from("save_members")
       .upsert({ save_id: saveId, user_id: existing.id, role, added_by: me.user.id }, { onConflict: "save_id,user_id" });
     if (memErr) {
