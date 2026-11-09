@@ -352,3 +352,24 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .implist .impres{flex-basis:100%;color:var(--fg)}
 .welcome .wlead{font-size:1.02rem;color:var(--fg);margin:2px 0 0;line-height:1.5}
 .welcome .wlead b{color:var(--gold)}
+/* Hyrule Night: the email look. Deep navy, gold, silver trim. */
+.sw[data-sw="hyrule"] i:nth-child(1){background:#aab4c8}.sw[data-sw="hyrule"] i:nth-child(2){background:#d4af37}.sw[data-sw="hyrule"] i:nth-child(3){background:#0e1733}
+:root[data-skin="hyrule"]{--bg:#eef1f7;--surface:#fbfcfe;--fg:#16224a;--muted:#545e7d;--line:#cfd6e4;--silver:#9aa5bc;--gold:#9c7a14;--child:#23725a;--child-bg:#ddefe7;--adult:#4b4bb0;--adult-bg:#e5e5f7;--either:#8a6514;--either-bg:#f2e8cf;--active:#1b2b63;color-scheme:light;--display:"Cinzel",Georgia,serif;--body:"Source Sans 3",system-ui,sans-serif}
+:root[data-skin="hyrule"][data-theme="dark"]{--bg:#0e1733;--surface:#16224a;--fg:#e6eaf4;--muted:#aab4c8;--line:#2a3a6e;--silver:#aab4c8;--gold:#d4af37;--child:#7fd6b4;--child-bg:#123832;--adult:#b9b2f5;--adult-bg:#28285e;--either:#e8cf86;--either-bg:#3a3218;--active:#d4af37;color-scheme:dark}
+:root[data-skin="hyrule"] h1{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+:root[data-skin="hyrule"] h1 span{letter-spacing:.02em}
+:root[data-skin="hyrule"] .titlebar{position:relative;padding-bottom:12px;margin-bottom:14px;border-bottom:1px solid var(--silver)}
+:root[data-skin="hyrule"] .titlebar::after{content:"\25C6";position:absolute;left:50%;bottom:0;transform:translate(-50%,50%);padding:0 10px;background:var(--bg);color:var(--gold);font-size:.75rem;line-height:1}
+:root[data-skin="hyrule"] .seg{border-color:var(--gold)}
+:root[data-skin="hyrule"] .seg button+button{border-left-color:var(--line)}
+:root[data-skin="hyrule"] .sel,:root[data-skin="hyrule"] .ptoggle,:root[data-skin="hyrule"] .acctbtn{border-color:var(--silver)}
+:root[data-skin="hyrule"] th{color:var(--silver)}
+:root[data-skin="hyrule"] tr.area td{letter-spacing:.04em;border-bottom:1px solid var(--silver)}
+:root[data-skin="hyrule"] tr.area td .ahead>span:first-child::before{content:"\25C6";color:var(--gold);font-size:.65em;margin-right:.6em;vertical-align:.15em}
+:root[data-skin="hyrule"] .drawer{border-right-color:var(--silver)}
+:root[data-skin="hyrule"] .drawer a[aria-current="page"]{border-color:var(--silver);box-shadow:inset 3px 0 0 var(--gold)}
+:root[data-skin="hyrule"] .panel{border:2px solid var(--gold);box-shadow:0 0 0 4px var(--surface),0 0 0 5px var(--silver),0 10px 40px rgba(0,0,0,.35)}
+:root[data-skin="hyrule"] .fab{background:linear-gradient(180deg,#e6c65a,#d4af37 55%,#a8841f);color:#0e1733;border:1px solid #a8841f}
+:root[data-skin="hyrule"] .primary{background:linear-gradient(180deg,#e6c65a,#d4af37 55%,#a8841f);color:#0e1733;border:1px solid #a8841f}
+:root[data-skin="hyrule"][data-theme="light"] .primary{background:var(--active);color:#fff;border-color:var(--active)}
+:root[data-skin="hyrule"] .drawer a .bar2 i{background:linear-gradient(90deg,var(--gold),#e6c65a)}

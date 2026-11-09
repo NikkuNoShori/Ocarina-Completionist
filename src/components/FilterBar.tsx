@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgeFilter, Order, Settings, TimeFilter } from "../lib/types";
 
-const THEMES: [string, string][] = [["kokiri", "Kokiri Green"], ["zora", "Zora Blue"], ["golden", "Triforce Gold"], ["royal", "Hylian Royal"], ["sheikah", "Sheikah Slate"]];
+const THEMES: [string, string][] = [["kokiri", "Kokiri Green"], ["zora", "Zora Blue"], ["golden", "Triforce Gold"], ["royal", "Hylian Royal"], ["hyrule", "Hyrule Night"], ["sheikah", "Sheikah Slate"]];
 const AGE_LABEL: Record<AgeFilter, string> = { all: "All", Child: "Child", Adult: "Adult", travel: "Time travel" };
 const TIME_LABEL: Record<TimeFilter, string> = { all: "Any time", Day: "Day", Night: "Night" };
 
