@@ -11,7 +11,9 @@ import type { AgeFilter, ListState, Order, RowEdit, TimeFilter } from "./lib/typ
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistTable } from "./components/ChecklistTable";
 import { FilterBar } from "./components/FilterBar";
+import { LEGAL_TITLES, LegalPage, type LegalId } from "./components/LegalPage";
 import { ListsDrawer } from "./components/ListsDrawer";
+import { MoreMenu } from "./components/MoreMenu";
 import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
 import { PanelIcon } from "./components/ui";
@@ -38,7 +40,10 @@ export default function App() {
   const [saving, setSaving] = useState(false);
 
   const lists = ref?.lists ?? [];
-  const list = lists.find(L => L.id === curId) ?? lists[0];
+  // #privacy and #terms are pages too; anything else is a checklist id
+  const legal: LegalId | null = curId === "privacy" || curId === "terms" ? curId : null;
+  const list = legal ? undefined : lists.find(L => L.id === curId) ?? lists[0];
+  const firstId = list?.id ?? lists[0]?.id ?? "";
   const editing = !!draft;
 
   // Hash routing between lists (locked while editing)
@@ -146,6 +151,7 @@ export default function App() {
 
   if (refError) return (
     <div className="wrap crash">
+      <header className="titlebar"><div className="tleft" /><div className="tactions"><MoreMenu settings={settings} setSettings={setSettings} /></div></header>
       <h1>Couldn't load the checklists</h1>
       <p className="sub">{friendly(refError)}</p>
       <button className="primary" onClick={retry}>Try again</button>
@@ -162,9 +168,11 @@ export default function App() {
           <button className={"ptoggle" + (panelOpen ? " on" : "")} aria-expanded={panelOpen} aria-controls="drawer" title="Toggle the lists panel" onClick={() => togglePanel(!panelOpen)}>
             <PanelIcon /><span className="vh">Lists panel</span>
           </button>
-          <h1>{list ? list.name : "Loading"} {list && <span>· {countGot(pool, state.got)} / {pool.length}</span>}</h1>
+          <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"} {list && <span>· {countGot(pool, state.got)} / {pool.length}</span>}</h1>
         </div>
         <div className="tactions">
+          {/* On checklist pages the ⋮ menu sits at the end of the filter bar; everywhere else it's here */}
+          {!list && <MoreMenu settings={settings} setSettings={setSettings} />}
           <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" onClick={() => setAcctOpen(true)}>
             <span className="av" aria-hidden="true">{user ? (user.email ?? "?")[0].toUpperCase() : "?"}</span>
             <span>{user ? active?.name ?? "Account" : "Sign in"}</span>
@@ -172,6 +180,7 @@ export default function App() {
         </div>
       </header>
       {list && <p className="sub">{list.sub}</p>}
+      {legal ? <LegalPage id={legal} /> : <>
       <div className="savebar">
         {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={() => setAcctOpen(true)}>Sign in</button> to keep it on every device, use several save files and share them.</>
           : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={() => setAcctOpen(true)}>Switch or share</button>
@@ -196,19 +205,20 @@ export default function App() {
         onToggle={onToggle} onEdit={onEdit} onUndo={onUndo}
         emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
+      </>}
 
       {list && <p className="foot"><span dangerouslySetInnerHTML={{ __html: list.foot }} /> Tap the <b>?</b> button for all sources.</p>}
-      <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p>
+      <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
     </div>
 
-    {panelOpen && list && <ListsDrawer lists={lists} progress={draft ? { ...saves.progress, [list.id]: draft.after } : saves.progress} curId={list.id} editing={editing}
+    {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={draft && list ? { ...saves.progress, [list.id]: draft.after } : saves.progress} curId={list?.id ?? ""} editing={editing}
       onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)} />}
 
     {!srcOpen && <button className="fab" aria-label="Show sources" aria-haspopup="dialog" onClick={() => setSrcOpen(true)}>?</button>}
-    {ref && list && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={list.id} />}
-    {list && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
+    {ref && lists.length > 0 && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={firstId} />}
+    {lists.length > 0 && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
       welcoming={welcoming} onWelcomed={() => setWelcoming(false)}
-      lists={lists} curId={list.id} saves={saves.saves} active={active} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
+      lists={lists} curId={firstId} saves={saves.saves} active={active} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
       guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
   </>;
 }

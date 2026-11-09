@@ -373,3 +373,19 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 :root[data-skin="hyrule"] .primary{background:linear-gradient(180deg,#e6c65a,#d4af37 55%,#a8841f);color:#0e1733;border:1px solid #a8841f}
 :root[data-skin="hyrule"][data-theme="light"] .primary{background:var(--active);color:#fff;border-color:var(--active)}
 :root[data-skin="hyrule"] .drawer a .bar2 i{background:linear-gradient(90deg,var(--gold),#e6c65a)}
+.ksec.first{border-top:0;margin-top:0;padding-top:0}
+.kfield{display:flex;flex-direction:column;gap:4px;padding:6px 10px;font:600 .82rem var(--body);color:var(--muted)}
+.kfield .kseg{padding:0}
+.kselwrap{display:flex;align-items:center;gap:8px}
+.kselwrap .sw{flex:0 0 auto}
+.sel.ksel{width:100%;min-width:180px;padding:6px 8px;font-size:.92rem}
+.legal{max-width:70ch;padding-bottom:24px}
+.legal h2{font-family:var(--display);font-size:1.15rem;color:var(--gold);margin:24px 0 6px}
+.legal p,.legal li{line-height:1.6}
+.legal ul{padding-left:20px}
+.legal a{color:var(--gold)}
+.foot a{color:var(--gold)}
+.tactions{margin-left:auto}
+.kmenu{max-width:calc(100vw - 32px)}
+.seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+.seg button{white-space:nowrap;flex:0 0 auto}
