@@ -12,7 +12,9 @@ import { ls } from "./lib/storage";
 import type { AgeFilter, ListState, Order, RowEdit, TimeFilter } from "./lib/types";
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistTable } from "./components/ChecklistTable";
-import { FilterBar } from "./components/FilterBar";
+import { FilterBar, ListMenuItems } from "./components/FilterBar";
+import { MoreMenu } from "./components/MoreMenu";
+import { orderFor, useFilterPrefs, useMedia } from "./lib/filters";
 import { LEGAL_TITLES, LegalPage, type LegalId } from "./components/LegalPage";
 import { ListsDrawer } from "./components/ListsDrawer";
 import { Avatar, nameOf } from "./components/Avatar";
@@ -34,11 +36,14 @@ export default function App() {
   useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); setJoinedId(id); if (legal) location.hash = ""; }, welcoming);
 
   const [curId, setCurId] = useState(() => window.location.hash.slice(1));
-  const [filt, setFilt] = useState<AgeFilter>("all");
-  const [tfilt, setTfilt] = useState<TimeFilter>("all");
-  const [order, setOrder] = useState<Order>("area");
+  // Filters are remembered across lists and visits (src/lib/filters.ts)
+  const { prefs, update: updatePrefs, setOrder: saveOrder } = useFilterPrefs();
+  const filt = prefs.age, tfilt = prefs.time, hideDone = prefs.hideDone;
+  const setFilt = (age: AgeFilter) => updatePrefs({ age });
+  const setTfilt = (time: TimeFilter) => updatePrefs({ time });
+  const setHideDone = (b: boolean) => updatePrefs({ hideDone: b });
   const [search, setSearch] = useState("");
-  const [hideDone, setHideDone] = useState(false);
+  const phone = useMedia("(max-width:640px)");
   const [draft, setDraft] = useState<{ before: ListState; after: ListState } | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => (wide() ? ls.get("oot-panel-open", true) : false));
   const [srcOpen, setSrcOpen] = useState(false);
@@ -63,13 +68,9 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, [draft, list]);
 
-  // Keep the sort valid for the list you're on
-  useEffect(() => {
-    if (!list) return;
-    if (list.item_groups && order === "area") setOrder("item");
-    else if (!list.item_groups && order === "item") setOrder("area");
-    else if (!list.sortable && order === "story") setOrder("area");
-  }, [list, order]);
+  // Sort is remembered per list, falling back to what that list supports
+  const order: Order = list ? orderFor(list, prefs.order[list.id]) : "area";
+  const setOrder = (o: Order) => { if (list) saveOrder(list.id, o); };
 
   // Lists panel: docked beside the checklist on wide screens
   useEffect(() => { document.documentElement.classList.toggle("panel-open", panelOpen); }, [panelOpen]);
@@ -170,6 +171,11 @@ export default function App() {
   const overall = completion(lists, liveAll);
   const joined = joinedId && saves.activeId === joinedId ? active : null;
 
+  const listMenu = list && !legal ? <MoreMenu items={close => <ListMenuItems close={close}
+    hideDone={hideDone} setHideDone={setHideDone} editing={editing}
+    canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
+    order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} />} /> : null;
+
   return <>
     <div className="wrap">
       <header className="titlebar">
@@ -180,6 +186,8 @@ export default function App() {
           <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"} {list && <span>· {countGot(pool, state.got)} / {pool.length}</span>}</h1>
         </div>
         <div className="tactions">
+          {/* Phones: the list ⋮ sits beside the avatar to keep the filter bar to two rows */}
+          {phone && listMenu}
           {/* Phones (and desktop with the lists panel closed): account button up here. Desktop: bottom of the lists panel. */}
           <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" aria-label={user ? "Account and settings" : "Sign in and settings"} onClick={() => setAcctOpen(true)}>
             <Avatar user={user} />
@@ -203,9 +211,7 @@ export default function App() {
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
         search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
         editing={editing} onDone={doneEdit} onCancel={cancelEdit}
-        hideDone={hideDone} setHideDone={setHideDone}
-        canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
-        order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups}
+        phone={phone} menu={phone ? null : listMenu}
       />}
       {editing && <div className="editbar">Editing: change the area, location, map level, age, time or requirements on any row. Nothing is saved until you tap Done editing.{" "}
         <button className="linkbtn" onClick={resetAll}>Reset all edits on this list</button></div>}

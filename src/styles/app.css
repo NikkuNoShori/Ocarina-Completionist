@@ -440,14 +440,14 @@ h1 #h1n{font-variant-numeric:tabular-nums}
   .acctbtn{padding:4px}
   .acctbtn span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 }
-/* ---------- Phone toolbar: age buttons / time + ⋮ / search, each on its own row ---------- */
+/* ---------- Phone toolbar: age + time dropdowns / search (the ⋮ lives in the header) ---------- */
 @media (max-width:640px){
   .bar{gap:8px}
-  .bar>.seg{order:1;flex:1 1 100%}
-  .bar>.tsel{order:2;flex:0 1 auto}
+  .bar>.asel{order:1;flex:1 1 0;min-width:0;width:auto}
+  .bar>.tsel{order:2;flex:1 1 0;min-width:0}
   .bar>.editbtn{order:3}
-  .bar>.kebab{order:4;margin-left:auto}
   .bar>.search{order:5;flex:1 1 100%;margin-left:0}
+  .titlebar .kbtn{height:36px}
   .bar>.search .sel{width:100%}
   /* Menus open as a sheet from the bottom of the screen, so every option is reachable */
   .kmenu{position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));
