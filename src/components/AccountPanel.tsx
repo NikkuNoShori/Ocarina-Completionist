@@ -4,7 +4,7 @@ import { sb } from "../lib/supabase";
 import { completion, percent, totalItems } from "../lib/progress";
 import type { ChecklistList, Progress, SaveFile, Settings } from "../lib/types";
 import { Avatar, nameOf } from "./Avatar";
-import { DisplaySettings, THEMES } from "./DisplaySettings";
+import { DisplaySettings, THEMES, ZoomControl } from "./DisplaySettings";
 import { useMedia } from "../lib/filters";
 import { useNotify, type Notify } from "./Notify";
 import { ProgressSummary } from "./ProgressSummary";
@@ -615,9 +615,12 @@ const Ico = ({ d }: { d: ReactNode }) => <svg className="dico" viewBox="0 0 24 2
 
 /** Where the popover goes: beside the account card (lists panel) or under the header button. */
 function place(anchor: HTMLElement | null | undefined): CSSProperties {
-  const W = 340, M = 12, vw = window.innerWidth, vh = window.innerHeight;
+  // With page zoom on, rects come back in screen pixels but styles are in zoomed pixels
+  const z = parseFloat(document.documentElement.style.zoom || "1") || 1;
+  const W = 340, M = 12, vw = window.innerWidth / z, vh = window.innerHeight / z;
   if (!anchor) return { right: M, top: 72, maxHeight: vh - 84 };
-  const r = anchor.getBoundingClientRect();
+  const b = anchor.getBoundingClientRect();
+  const r = { left: b.left / z, right: b.right / z, top: b.top / z, bottom: b.bottom / z };
   const left = Math.min(Math.max(M, r.left < vw / 2 ? r.left : r.right - W), vw - W - M);
   return r.top > vh / 2
     ? { left, bottom: vh - r.top + 8, maxHeight: r.top - 8 - M }
@@ -653,7 +656,7 @@ function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) 
   const total = totalItems(p.lists);
   const pc = percent(completion(p.lists, p.progress).done, total);
   const theme = THEMES.find(([id]) => id === p.settings.theme)?.[1] ?? "Theme";
-  const look = `${theme} · ${p.settings.mode === "dark" ? "Dark" : "Light"} · ${p.settings.density === "compact" ? "Compact" : "Comfortable"}`;
+  const look = `${theme} · ${p.settings.mode === "dark" ? "Dark" : "Light"} · ${p.settings.density === "compact" ? "Compact" : "Comfortable"}${p.settings.zoom !== 100 ? ` · ${p.settings.zoom}%` : ""}`;
   const shown = name || nameOf(user);
 
   const sub = (title: string, back: View, body: ReactNode) => <>
@@ -723,6 +726,8 @@ function Appearance({ settings, setSettings }: { settings: Settings; setSettings
     <div className="dseg full" role="group" aria-label="Mode">
       {(["light", "dark"] as const).map(m => <button key={m} aria-pressed={settings.mode === m} onClick={() => set("mode", m)}>{m === "light" ? "Light" : "Dark"}</button>)}
     </div>
+    <h3>Zoom</h3>
+    <div className="zrow"><ZoomControl settings={settings} setSettings={setSettings} /></div>
     <h3>Spacing</h3>
     <div className="dseg full" role="group" aria-label="Spacing">
       {(["comfortable", "compact"] as const).map(d => <button key={d} aria-pressed={settings.density === d} onClick={() => set("density", d)}>{d === "comfortable" ? "Comfortable" : "Compact"}</button>)}

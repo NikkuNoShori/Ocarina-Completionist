@@ -36,6 +36,7 @@
           skin = g("oot-skin") || "hyrule";
           d.dataset.theme = g("oot-mode") || "dark";
           d.dataset.density = g("oot-density") || "comfortable";
+          var z = +g("oot-zoom"); if (z >= 75 && z <= 125 && z !== 100) d.style.zoom = z / 100;
         } catch (e) { /* storage blocked: defaults */ }
         d.dataset.skin = skin;
         window.ootFonts(skin);

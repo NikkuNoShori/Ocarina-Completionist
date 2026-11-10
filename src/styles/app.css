@@ -643,7 +643,8 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 /* ---------- Phones & tablets: sticky top bar, title opens the lists ---------- */
 .appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;
   margin:-28px calc(-1 * max(16px,env(safe-area-inset-left,0px))) 0;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));
-  background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  /* Solid, no backdrop-filter: a filter would trap the ⋮ sheet (position:fixed) inside the bar */
+  background:var(--bg);border-bottom:1px solid var(--line)}
 :root[data-skin="hyrule"] .appbar{border-bottom-color:var(--silver)}
 .appbar h1{flex:1 1 auto;min-width:0;margin:0;font-size:1.3rem;line-height:1.2}
 :root[data-skin="golden"] .appbar h1{font-size:1.35rem}
@@ -672,3 +673,20 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 @keyframes sheetUp{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.lscrim,.drawer.lsheet{animation:none}}
+/* ---------- One stat line: this list + overall ---------- */
+.tmeta{flex-wrap:wrap;gap:4px 18px}
+.tstat{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.tpct{color:var(--gold);font-variant-numeric:tabular-nums}
+.tstat+.tstat{padding-left:18px;border-left:1px solid var(--line)}
+.overall:not(:has(*)){display:none}
+@media (max-width:640px){.tmeta{gap:4px 12px;font-size:.82rem}.tstat+.tstat{padding-left:12px}.tbar{width:44px}}
+/* ---------- Zoom stepper ---------- */
+.zoomc{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.zoomc button{font:700 .95rem var(--body);background:var(--surface);color:var(--fg);border:0;min-width:36px;padding:6px 8px;cursor:pointer}
+.zoomc button+button{border-left:1px solid var(--line)}
+.zoomc .zval{min-width:64px;font-variant-numeric:tabular-nums}
+.zoomc button:disabled{opacity:.4;cursor:default}
+.zoomc button:hover:not(:disabled){color:var(--gold)}
+.zoomc button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.zrow{margin:0 6px 6px}.zrow .zoomc{display:flex}.zrow .zoomc .zval{flex:1}
+.appbar:has(.kmenu){z-index:80}

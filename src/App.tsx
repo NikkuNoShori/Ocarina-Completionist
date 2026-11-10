@@ -200,8 +200,12 @@ export default function App() {
       {(() => {
         const title = legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading";
         const got = list ? countGot(pool, state.got) : 0, pc = pool.length ? Math.round(got / pool.length * 100) : 0;
-        const meta = list && <p className="tmeta"><span className="tnum"><b>{got}</b> / {pool.length}</span> collected
-          <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></p>;
+        const meta = list && <p className="tmeta">
+          <span className="tstat" title="On this list, with the age and time filters applied"><span className="tnum"><b>{got}</b> / {pool.length}</span> on this list
+            <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></span>
+          <span className="tstat" title={`${overall.done} of ${overall.total} collected across every list in this save file`}><b className="tpct">{overall.pct}%</b> overall completion
+            <span className="tbar" aria-hidden="true"><i style={{ width: `${overall.pct}%` }} /></span></span>
+        </p>;
         const actions = <div className="tactions">
           {/* Phones: the list ⋮ sits beside the avatar */}
           {phone && listMenu}
@@ -236,9 +240,6 @@ export default function App() {
       {list && <p className="sub">{list.sub}</p>}
       {legal ? <LegalPage id={legal} /> : <>
       <div className="overall">
-        {lists.length > 0 && <span className="ovl" title={`${overall.done} of ${overall.total} collected across every list in this save file`}>
-          <span className="sclab">Overall completion</span>
-          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span><b>{overall.pct}%</b></span>}
         {user && active?.role === "viewer" && <span className="ro">View only</span>}
         {saving && <span className="ro">Saving…</span>}
         {!user && <span className="ovguest">Saved in this browser only · <button className="linkbtn" onClick={openAcct}>Sign in</button> to sync</span>}

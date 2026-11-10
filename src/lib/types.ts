@@ -55,4 +55,4 @@ export interface EffRow {
 
 export interface SaveFile { id: string; name: string; owner_id: string; updated_at: string; role: Role; owner_email?: string; /** checkmarks in this save */ done?: number }
 
-export interface Settings { theme: string; mode: "light" | "dark"; density: "comfortable" | "compact" }
+export interface Settings { theme: string; mode: "light" | "dark"; density: "comfortable" | "compact"; /** page zoom, 75–125 (%) */ zoom: number }
