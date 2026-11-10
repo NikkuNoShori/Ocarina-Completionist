@@ -10,37 +10,54 @@ export function FilterBar(p: {
   tfilt: TimeFilter; setTfilt: (t: TimeFilter) => void; timeCounts: Record<TimeFilter, string>;
   search: string; setSearch: (s: string) => void; areaNames: string[];
   editing: boolean; onDone: () => void; onCancel: () => void;
-  /** Phones get an age dropdown, and the ⋮ moves up to the header */
+  area: string; setArea: (a: string) => void; areaOpts: { name: string; count: string }[]; areaTotal: string;
+  /** Phones get dropdowns (age, time, area), and the ⋮ moves up to the header */
   phone: boolean; menu: ReactNode;
 }) {
   return (
-    <div className="bar">
+    <div className={"bar" + (p.editing ? " editing" : "")}>
       {p.phone ? (
-        <select className="sel asel" aria-label="Filter by age" value={p.filt} onChange={e => p.setFilt(e.target.value as AgeFilter)}>
-          {(Object.keys(AGE_LABEL) as AgeFilter[]).map(f => <option key={f} value={f}>{AGE_LABEL[f]} ({p.ageCounts[f]})</option>)}
-        </select>
+        <label className="fld f-age"><span className="flab">Age</span>
+          <select className="sel asel" value={p.filt} onChange={e => p.setFilt(e.target.value as AgeFilter)}>
+            {(Object.keys(AGE_LABEL) as AgeFilter[]).map(f => <option key={f} value={f}>{AGE_LABEL[f]} ({p.ageCounts[f]})</option>)}
+          </select>
+        </label>
       ) : (
-        <div className="seg" role="group" aria-label="Filter by age">
-          {(Object.keys(AGE_LABEL) as AgeFilter[]).map(f => (
-            <button key={f} aria-pressed={p.filt === f} onClick={() => p.setFilt(f)} title={f === "travel" ? AGE_TIP : undefined}>
-              {f === "all" ? "All" : AGE_LABEL[f]}<span className="bc">{p.ageCounts[f]}</span>
-            </button>
-          ))}
+        <div className="fld f-age" role="group" aria-labelledby="flab-age"><span className="flab" id="flab-age">Age</span>
+          <div className="seg">
+            {(Object.keys(AGE_LABEL) as AgeFilter[]).map(f => (
+              <button key={f} aria-pressed={p.filt === f} onClick={() => p.setFilt(f)} title={f === "travel" ? AGE_TIP : undefined}>
+                {f === "all" ? "All" : AGE_LABEL[f]}<span className="bc">{p.ageCounts[f]}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
-      <select className="sel tsel" aria-label="Filter by time of day" value={p.tfilt} onChange={e => p.setTfilt(e.target.value as TimeFilter)}>
-        {(Object.keys(TIME_LABEL) as TimeFilter[]).map(t => <option key={t} value={t}>{TIME_LABEL[t]} ({p.timeCounts[t]})</option>)}
-      </select>
-      {p.editing && <>
+      <label className="fld f-time"><span className="flab">Time of day</span>
+        <select className="sel tsel" value={p.tfilt} onChange={e => p.setTfilt(e.target.value as TimeFilter)}>
+          {(Object.keys(TIME_LABEL) as TimeFilter[]).map(t => <option key={t} value={t}>{TIME_LABEL[t]} ({p.timeCounts[t]})</option>)}
+        </select>
+      </label>
+      {p.phone ? (
+        <label className="fld f-area"><span className="flab">Area</span>
+          <select className="sel" value={p.area} onChange={e => p.setArea(e.target.value)}>
+            <option value="">All areas ({p.areaTotal})</option>
+            {p.area && !p.areaOpts.some(o => o.name === p.area) && <option value={p.area}>{p.area} (0)</option>}
+            {p.areaOpts.map(o => <option key={o.name} value={o.name}>{o.name} ({o.count})</option>)}
+          </select>
+        </label>
+      ) : (
+        <label className="fld f-area search"><span className="flab">Search</span>
+          <input className="sel" type="search" list="areas" placeholder="Area or location…" autoComplete="off"
+            value={p.search} onChange={e => p.setSearch(e.target.value)} />
+          <datalist id="areas">{p.areaNames.map(a => <option key={a} value={a} />)}</datalist>
+        </label>
+      )}
+      {p.editing && <div className="fld f-edit">
         <button className="editbtn" aria-pressed="true" onClick={p.onDone}>Done editing</button>
         <button className="editbtn cancelbtn" onClick={p.onCancel}>Cancel</button>
-      </>}
-      <div className="search">
-        <input className="sel" type="search" list="areas" placeholder="Search locations…" aria-label="Search locations" autoComplete="off"
-          value={p.search} onChange={e => p.setSearch(e.target.value)} />
-        <datalist id="areas">{p.areaNames.map(a => <option key={a} value={a} />)}</datalist>
-      </div>
-      {p.menu}
+      </div>}
+      {p.menu && <div className="fld f-menu">{p.menu}</div>}
     </div>
   );
 }

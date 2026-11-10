@@ -284,7 +284,7 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .acctbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .savebar{margin:0 0 10px;font-size:.9rem;color:var(--muted)}
 .savebar b{color:var(--fg)}
-.savebar .ro{font:700 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--adult);margin-left:6px}
+.savebar .ro,.savecard .ro{font:700 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--adult);margin-left:6px}
 .acctscrim{align-items:center;justify-content:center}
 .acctpanel{width:min(480px,100%);max-height:88vh}
 .acctpanel h3{margin:18px 0 8px}
@@ -597,3 +597,39 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .drow2.th .tick{color:var(--gold)}
 .dseg.full{display:flex;margin:0 6px 6px}
 .dseg.full button{flex:1}
+/* ---------- Page header: title + count line, save card ---------- */
+.ttext{min-width:0;display:flex;flex-direction:column;gap:2px}
+.tmeta{display:flex;align-items:center;gap:8px;margin:0;font:600 .88rem var(--body);color:var(--muted)}
+.tnum{font-variant-numeric:tabular-nums}
+.tnum b{color:var(--gold);font-size:1.05em}
+.tbar{display:inline-block;width:90px;height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--gold)}
+.savecard{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;margin:0 0 14px}
+:root[data-skin="hyrule"] .savecard{border-color:var(--silver)}
+.scl{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.sclab{font:700 .68rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.scname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+.scpct{display:inline-flex;align-items:center;gap:6px;font:600 .82rem var(--body);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.scpct b{color:var(--gold)}
+.scbtn{font:700 .85rem var(--body);color:var(--gold);background:none;border:1px solid var(--gold);border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.scbtn:hover{background:var(--gold);color:var(--bg)}
+.scbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.savecard .ro{margin:0}
+/* ---------- Filter bar: each control labelled, label centred above it ---------- */
+.bar{align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0;margin:0}
+.flab{font:700 .66rem var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:center}
+.fld .sel{width:100%;box-sizing:border-box}
+.bar .f-area.search{margin-left:auto;width:min(240px,100%)}
+.f-edit{flex-direction:row;gap:8px}
+.f-menu{align-self:flex-end}
+@media (max-width:640px){
+  .bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}
+  .bar .f-area,.bar .f-edit{grid-column:1/-1}
+  .bar .f-area.search{margin-left:0;width:auto}
+  .f-edit{justify-content:center}
+  .savecard{gap:8px 12px;padding:9px 12px}
+  .scpct{order:3}
+  .scbtn{padding:5px 10px}
+  .tbar{width:64px}
+}

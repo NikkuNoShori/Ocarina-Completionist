@@ -43,6 +43,8 @@ export default function App() {
   const setTfilt = (time: TimeFilter) => updatePrefs({ time });
   const setHideDone = (b: boolean) => updatePrefs({ hideDone: b });
   const [search, setSearch] = useState("");
+  // Phones pick an area from a dropdown instead of typing a search
+  const [area, setArea] = useState("");
   const phone = useMedia("(max-width:640px)");
   const [draft, setDraft] = useState<{ before: ListState; after: ListState } | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => (wide() ? ls.get("oot-panel-open", true) : false));
@@ -66,7 +68,7 @@ export default function App() {
     const onHash = () => {
       const id = window.location.hash.slice(1);
       if (draft) { if (list && id !== list.id) window.location.hash = list.id; return; }
-      setCurId(id); setSearch("");
+      setCurId(id); setSearch(""); setArea("");
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -109,14 +111,23 @@ export default function App() {
     const byItem = order === "item" && list.item_groups;
     const gi = (r: typeof all[number]) => (byItem ? list.item_groups!.indexOf(r.group ?? "") : aIdx[r.a]);
     const sorted = order === "story" ? all : [...all].sort((x, y) => gi(x) - gi(y) || x.n - y.n);
-    return sorted.filter(r => ageOK(r, filt) && timeOK(r, tfilt) && !(hideDone && state.got.has(r.n))
+    return sorted.filter(r => ageOK(r, filt) && timeOK(r, tfilt) && !(hideDone && state.got.has(r.n)) && (!area || r.a === area)
       && (!q || (r.a + " " + r.l + " " + r.lv + " " + r.note).toLowerCase().replace(/[’']/g, "").includes(q)));
-  }, [list, all, order, aIdx, filt, tfilt, hideDone, state, q]);
+  }, [list, all, order, aIdx, filt, tfilt, hideDone, state, q, area]);
 
   const frac = (rows: typeof all) => `${countGot(rows, state.got)}/${rows.length}`;
   const ageCounts = Object.fromEntries((["all", "Child", "Adult", "travel"] as AgeFilter[]).map(f => [f, frac(all.filter(r => ageOK(r, f) && timeOK(r, tfilt)))])) as Record<AgeFilter, string>;
   const timeCounts = Object.fromEntries((["all", "Day", "Night"] as TimeFilter[]).map(t => [t, frac(all.filter(r => timeOK(r, t) && ageOK(r, filt)))])) as Record<TimeFilter, string>;
   const pool = all.filter(r => ageOK(r, filt) && timeOK(r, tfilt));
+  // Areas in the order the list shows them, with how many you've got in each (age/time filters applied)
+  const areaOpts = useMemo(() => {
+    const m = new Map<string, typeof all>();
+    for (const r of [...pool].sort((x, y) => aIdx[x.a] - aIdx[y.a])) m.set(r.a, [...(m.get(r.a) ?? []), r]);
+    return [...m].map(([name, rows]) => ({ name, count: frac(rows) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool.length, filt, tfilt, aIdx, state]);
+  // The text search only exists on wider screens, and the area picker only on phones
+  useEffect(() => { if (phone) setSearch(""); else setArea(""); }, [phone]);
 
   // Row actions
   const onToggle = (n: number, on: boolean) => {
@@ -187,7 +198,12 @@ export default function App() {
           <button className={"ptoggle" + (panelOpen ? " on" : "")} aria-expanded={panelOpen} aria-controls="drawer" title="Toggle the lists panel" onClick={() => togglePanel(!panelOpen)}>
             <PanelIcon /><span className="vh">Lists panel</span>
           </button>
-          <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"} {list && <span>· {countGot(pool, state.got)} / {pool.length}</span>}</h1>
+          <div className="ttext">
+            <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"}</h1>
+            {list && (() => { const got = countGot(pool, state.got), pc = pool.length ? Math.round(got / pool.length * 100) : 0; return (
+              <p className="tmeta"><span className="tnum"><b>{got}</b> / {pool.length}</span> collected
+                <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></p>); })()}
+          </div>
         </div>
         <div className="tactions">
           {/* Phones: the list ⋮ sits beside the avatar to keep the filter bar to two rows */}
@@ -201,19 +217,24 @@ export default function App() {
       </header>
       {list && <p className="sub">{list.sub}</p>}
       {legal ? <LegalPage id={legal} /> : <>
-      <div className="savebar">
-        {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={openAcct}>Sign in</button> to keep it on every device, use several save files and share them.</>
-          : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={e => openAcct(e, "saves")}>Switch or share</button>
-            {active.role === "viewer" && <span className="ro">View only</span>}</>}
-        {lists.length > 0 && <span className="pctchip" title={`${overall.done} of ${overall.total} collected across every list`}>
-          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span>{overall.pct}% complete</span>}
+      <div className="savecard">
+        <span className="scl">
+          <span className="sclab">{user ? (active && active.role !== "owner" ? `Save file · shared, ${active.role === "viewer" ? "view only" : "can edit"}` : "Save file") : "Not signed in"}</span>
+          <b className="scname">{user ? active?.name ?? "…" : "This browser only"}</b>
+        </span>
+        {lists.length > 0 && <span className="scpct" title={`${overall.done} of ${overall.total} collected across every list`}>
+          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span><b>{overall.pct}%</b> overall</span>}
         {saving && <span className="ro">Saving…</span>}
+        {user
+          ? <button className="scbtn" onClick={e => openAcct(e, "saves")}>Switch or share</button>
+          : <button className="scbtn" onClick={openAcct} title="Keep progress on every device, use several save files and share them">Sign in</button>}
       </div>
 
       {list && <FilterBar
         filt={filt} setFilt={setFilt} ageCounts={ageCounts}
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
         search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
+        area={area} setArea={setArea} areaOpts={areaOpts} areaTotal={frac(pool)}
         editing={editing} onDone={doneEdit} onCancel={cancelEdit}
         phone={phone} menu={phone ? null : listMenu}
       />}
@@ -222,7 +243,7 @@ export default function App() {
 
       {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
         onToggle={onToggle} onEdit={onEdit} onUndo={onUndo}
-        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : "Nothing on this list matches these filters."} />
+        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} matches these filters.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
       </>}
 
