@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { sb } from "../lib/supabase";
 import { completion, percent, totalItems } from "../lib/progress";
 import type { ChecklistList, Progress, SaveFile, Settings } from "../lib/types";
-import { Avatar } from "./Avatar";
-import { DisplaySettings } from "./DisplaySettings";
+import { Avatar, nameOf } from "./Avatar";
+import { DisplaySettings, THEMES } from "./DisplaySettings";
+import { useMedia } from "../lib/filters";
 import { useNotify, type Notify } from "./Notify";
 import { ProgressSummary } from "./ProgressSummary";
 import { ConfirmButton, Modal } from "./ui";
 import { ANY_LIST, guessList, matchAnyList, matchRows, namesMatch, readSpreadsheet, type ParsedSheet } from "../lib/sheets";
 
-type View = "signin" | "signup" | "forgot" | "main" | "share" | "errors" | "import";
+type View = "signin" | "signup" | "forgot" | "main" | "share" | "errors" | "import" | "saves" | "appearance" | "account";
+export type AcctView = "main" | "saves";
 const redirectTo = () => window.location.origin + window.location.pathname;
 
 /** Edge functions return { error } with a non-2xx status; pull out that message. */
@@ -31,6 +33,8 @@ interface Props {
   onSwitch: (id: string) => void; reloadSaves: () => Promise<SaveFile[] | null>;
   guestData: boolean; onCopyGuest: () => Promise<void>;
   onImport: (listId: string, ns: number[]) => Promise<boolean>;
+  /** What opened the menu; on desktop the menu pops out next to it */
+  anchor?: HTMLElement | null; startView?: AcctView;
 }
 
 export function AccountPanel(p: Props) {
@@ -38,11 +42,19 @@ export function AccountPanel(p: Props) {
   const [view, setView] = useState<View>("signin");
   const [shareId, setShareId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => { if (p.open) setView(p.user ? "main" : "signin"); }, [p.open, p.user]);
+  const desk = useMedia("(min-width:900px)");
+  useEffect(() => { if (p.open) setView(p.user ? p.startView ?? "main" : "signin"); }, [p.open, p.user, p.startView]);
   useEffect(() => {
     if (!p.user) { setIsAdmin(false); return; }
     sb.rpc("am_i_admin").then(({ data, error }) => { if (!error) setIsAdmin(!!data); });
   }, [p.user]);
+
+  const welcome0 = p.welcoming && !!p.user && !p.recovering;
+  // Desktop, signed in: a slim drill-in menu beside whatever opened it
+  if (desk && p.user && !p.recovering && !welcome0) return p.open
+    ? <Drill {...p} user={p.user} notify={notify} isAdmin={isAdmin} view={view} go={setView}
+        shareSave={p.saves.find(s => s.id === shareId)} onShare={id => { setShareId(id); setView("share"); }} />
+    : null;
 
   let body, title = p.user ? "Account" : "Sign in";
   const back = () => setView("main");
@@ -186,7 +198,10 @@ function Recover({ user, done, notify }: { user: User; done: () => void; notify:
   );
 }
 
-function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v: View) => void; onShare: (id: string) => void }) {
+type SaveListProps = Props & { user: User; notify: Notify; onShare: (id: string) => void };
+
+/** Your save files and the ones shared with you: switch, create, share, rename, copy, delete or leave. */
+function SaveList(p: SaveListProps) {
   const { saves, active, notify } = p;
   const [creating, setCreating] = useState(false), [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null), [renameTo, setRenameTo] = useState("");
@@ -236,11 +251,6 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v:
       await p.reloadSaves(); p.onSwitch(n.id); notify.ok(`Copied to “${n.name}”.`);
     } finally { setBusy(null); }
   };
-  const signOut = async () => {
-    const { error } = await sb.auth.signOut();
-    if (error) return notify.error("sign out", error, "Couldn't sign out");
-    p.onClose(); notify.ok("Signed out.");
-  };
 
   const row = (s: SaveFile) => {
     // The active save shows live progress; others use the count loaded with the list
@@ -277,7 +287,6 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v:
   };
 
   return <>
-    <Profile user={p.user} notify={notify} />
     <div className="shead"><h3>Save files</h3>{!creating && <button className="linkbtn" onClick={() => setCreating(true)}>+ New</button>}</div>
     {creating && (
       <form className="inline" onSubmit={create}>
@@ -288,16 +297,34 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v:
     )}
     <ul className="slist">{own.map(row)}</ul>
     {shared.length > 0 && <><h3>Shared with you</h3><ul className="slist">{shared.map(row)}</ul></>}
-    {p.guestData && active?.role === "owner" && (
-      <p className="importbox">Checkmarks from before you signed in are saved in this browser. <button className="linkbtn" onClick={p.onCopyGuest}>Add them to “{active.name}”</button></p>
-    )}
+  </>;
+}
+
+async function doSignOut(notify: Notify, close: () => void) {
+  const { error } = await sb.auth.signOut();
+  if (error) return notify.error("sign out", error, "Couldn't sign out");
+  close(); notify.ok("Signed out.");
+}
+
+function GuestImport(p: Props) {
+  if (!p.guestData || p.active?.role !== "owner") return null;
+  return <p className="importbox">Checkmarks from before you signed in are saved in this browser. <button className="linkbtn" onClick={p.onCopyGuest}>Add them to “{p.active.name}”</button></p>;
+}
+
+/** Phones: everything in one scrolling sheet. */
+function Main(p: SaveListProps & { isAdmin: boolean; go: (v: View) => void }) {
+  const [name, setName] = useProfileName(p.user, p.notify);
+  return <>
+    <Profile user={p.user} notify={p.notify} name={name} setName={setName} />
+    <SaveList {...p} />
+    <GuestImport {...p} />
     <DisplayBlock {...p} />
     <div className="afoot">
       <button className="linkbtn" onClick={() => p.go("import")}>Import</button>
       {p.isAdmin && <button className="linkbtn" onClick={() => p.go("errors")}>Error log</button>}
-      <button className="linkbtn" onClick={signOut}>Sign out</button>
+      <button className="linkbtn" onClick={() => doSignOut(p.notify, p.onClose)}>Sign out</button>
     </div>
-    <DeleteAccount notify={notify} onDeleted={p.onClose} />
+    <DeleteAccount notify={p.notify} onDeleted={p.onClose} />
   </>;
 }
 
@@ -325,14 +352,20 @@ function RowMenu({ label, children }: { label: string; children: (close: () => v
   );
 }
 
-function Profile({ user, notify }: { user: User; notify: Notify }) {
-  const [name, setName] = useState<string | null>(null), [draft, setDraft] = useState(""), [editing, setEditing] = useState(false);
+/** The name others see (profiles.display_name); null while loading, "" when not set. */
+function useProfileName(user: User, notify: Notify) {
+  const [name, setName] = useState<string | null>(null);
   useEffect(() => {
     sb.from("profiles").select("display_name").eq("id", user.id).maybeSingle().then(({ data, error }) => {
       if (error) notify.error("load profile", error, "Couldn't load your profile");
       else setName(data?.display_name ?? "");
     });
   }, [user.id, notify]);
+  return [name, setName] as const;
+}
+
+function Profile({ user, notify, name, setName }: { user: User; notify: Notify; name: string | null; setName: (n: string) => void }) {
+  const [draft, setDraft] = useState(""), [editing, setEditing] = useState(false);
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const v = draft.trim().slice(0, 60);
@@ -383,7 +416,7 @@ function DeleteAccount({ notify, onDeleted }: { notify: Notify; onDeleted: () =>
 interface Person { user_id: string; email: string; display_name: string | null; role: string }
 interface Invite { id: string; email: string; role: string }
 
-function Share({ save, back, notify, reloadSaves }: { save: SaveFile; back: () => void; notify: Notify; reloadSaves: () => Promise<SaveFile[] | null> }) {
+function Share({ save, back, notify, reloadSaves, inlineBack = true }: { save: SaveFile; back: () => void; inlineBack?: boolean; notify: Notify; reloadSaves: () => Promise<SaveFile[] | null> }) {
   const [people, setPeople] = useState<Person[] | null>(null), [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState(""), [role, setRole] = useState("editor"), [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
@@ -429,7 +462,7 @@ function Share({ save, back, notify, reloadSaves }: { save: SaveFile; back: () =
   };
 
   return <>
-    <p className="alinks"><button className="linkbtn" onClick={back}>‹ Back</button></p>
+    {inlineBack && <p className="alinks"><button className="linkbtn" onClick={back}>‹ Back</button></p>}
     <h3>Share “{save.name}”</h3>
     <form className="aform" onSubmit={invite}>
       <label>Email<input className="sel" type="email" required placeholder="friend@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
@@ -469,7 +502,7 @@ function Share({ save, back, notify, reloadSaves }: { save: SaveFile; back: () =
 
 interface ErrRow { id: number; created_at: string; user_id: string | null; context: string; message: string; code: string | null; url: string | null; app_version: string | null; detail: unknown }
 
-function ErrorLog({ back, notify }: { back: () => void; notify: Notify }) {
+function ErrorLog({ back, notify }: { back?: () => void; notify: Notify }) {
   const [rows, setRows] = useState<ErrRow[] | null>(null);
   const load = useCallback(async () => {
     const { data, error } = await sb.from("client_errors").select("*").order("created_at", { ascending: false }).limit(100);
@@ -483,7 +516,7 @@ function ErrorLog({ back, notify }: { back: () => void; notify: Notify }) {
     notify.ok("Error log cleared."); load();
   };
   return <>
-    <p className="alinks"><button className="linkbtn" onClick={back}>‹ Back</button> · <button className="linkbtn" onClick={load}>Refresh</button>
+    <p className="alinks">{back && <><button className="linkbtn" onClick={back}>‹ Back</button> · </>}<button className="linkbtn" onClick={load}>Refresh</button>
       {rows && rows.length > 0 && <> · <ConfirmButton label="Clear all" confirmLabel="Tap again to clear" onConfirm={clear} /></>}</p>
     <h3>Recent errors</h3>
     <p className="anote">Errors from everyone's browsers, newest first. Expected ones (wrong password, offline) aren't logged.</p>
@@ -567,4 +600,132 @@ function ImportBox({ lists, curId, active, onImport, notify }: {
       </>}
     </div>
   );
+}
+
+/* ---------- Desktop: drill-in menu ---------- */
+
+const I = {
+  import: <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />,
+  warn: <path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0116 0" /></>,
+  out: <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />,
+  half: <><circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 000 18z" fill="currentColor" /></>,
+};
+const Ico = ({ d }: { d: ReactNode }) => <svg className="dico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+
+/** Where the popover goes: beside the account card (lists panel) or under the header button. */
+function place(anchor: HTMLElement | null | undefined): CSSProperties {
+  const W = 340, M = 12, vw = window.innerWidth, vh = window.innerHeight;
+  if (!anchor) return { right: M, top: 72, maxHeight: vh - 84 };
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(Math.max(M, r.left < vw / 2 ? r.left : r.right - W), vw - W - M);
+  return r.top > vh / 2
+    ? { left, bottom: vh - r.top + 8, maxHeight: r.top - 8 - M }
+    : { left, top: r.bottom + 8, maxHeight: vh - r.bottom - 8 - M };
+}
+
+function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) => void; shareSave?: SaveFile }) {
+  const { user, notify, view, go } = p;
+  const [name, setName] = useProfileName(user, notify);
+  const [pos, setPos] = useState(() => place(p.anchor));
+  const box = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const close = useRef(p.onClose); close.current = p.onClose;
+
+  // Keep it beside its button when the window changes; Escape or a click elsewhere closes it
+  useEffect(() => {
+    opener.current = (document.activeElement as HTMLElement) ?? null;
+    const onResize = () => setPos(place(p.anchor));
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close.current(); };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !p.anchor?.contains(t) && document.contains(t)) close.current();
+    };
+    window.addEventListener("resize", onResize); document.addEventListener("keydown", onKey); document.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("resize", onResize); document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onDown);
+      opener.current?.focus?.();
+    };
+  }, [p.anchor]);
+  // Each page starts at its first control
+  useEffect(() => { box.current?.querySelector<HTMLElement>(".dback, .drow2")?.focus(); }, [view]);
+
+  const total = totalItems(p.lists);
+  const pc = percent(completion(p.lists, p.progress).done, total);
+  const theme = THEMES.find(([id]) => id === p.settings.theme)?.[1] ?? "Theme";
+  const look = `${theme} · ${p.settings.mode === "dark" ? "Dark" : "Light"} · ${p.settings.density === "compact" ? "Compact" : "Comfortable"}`;
+  const shown = name || nameOf(user);
+
+  const sub = (title: string, back: View, body: ReactNode) => <>
+    <div className="dhd">
+      <button className="dback" onClick={() => go(back)}>‹ Back</button>
+      <h2 id="acctTitle">{title}</h2>
+    </div>
+    <div className="dbody">{body}</div>
+  </>;
+
+  let content: ReactNode;
+  if (view === "saves") content = sub("Playthroughs", "main", <><SaveList {...p} /><GuestImport {...p} /></>);
+  else if (view === "share" && p.shareSave) content = sub("Share", "saves", <Share save={p.shareSave} back={() => go("saves")} inlineBack={false} notify={notify} reloadSaves={p.reloadSaves} />);
+  else if (view === "appearance") content = sub("Appearance", "main", <Appearance settings={p.settings} setSettings={p.setSettings} />);
+  else if (view === "account") content = sub("Account", "main", <>
+    <Profile user={user} notify={notify} name={name} setName={setName} />
+    <DeleteAccount notify={notify} onDeleted={p.onClose} />
+  </>);
+  else if (view === "import") content = sub("Import", "main", <ImportBox lists={p.lists} curId={p.curId} active={p.active} onImport={p.onImport} notify={notify} />);
+  else if (view === "errors" && p.isAdmin) content = sub("Error log", "main", <ErrorLog notify={notify} />);
+  else content = <>
+    <h2 id="acctTitle" className="vh">Account</h2>
+    <div className="did">
+      <Avatar user={user} label={shown} className="wav" />
+      <span className="wname"><b>{shown}</b><small>{user.email}</small></span>
+    </div>
+    <div className="dbody root">
+      <button className="drow2" onClick={() => go("saves")}>
+        <span className="dring" style={{ "--p": pc } as CSSProperties}><i /></span>
+        <span className="dtx">Playthrough<small>{p.active?.name ?? "None"} · {pc}%</small></span><span className="chev">›</span>
+      </button>
+      <button className="drow2" onClick={() => go("appearance")}>
+        <Ico d={I.half} /><span className="dtx">Appearance<small>{look}</small></span><span className="chev">›</span>
+      </button>
+      <GuestImport {...p} />
+      <hr />
+      <button className="drow2" onClick={() => go("import")}><Ico d={I.import} /><span className="dtx">Import from spreadsheet</span></button>
+      {p.isAdmin && <button className="drow2" onClick={() => go("errors")}><Ico d={I.warn} /><span className="dtx">Error log</span><span className="dtag">Admin</span></button>}
+      <button className="drow2" onClick={() => go("account")}><Ico d={I.user} /><span className="dtx">Account settings<small>Name, delete account</small></span><span className="chev">›</span></button>
+      <hr />
+      <button className="drow2" onClick={() => doSignOut(notify, p.onClose)}><Ico d={I.out} /><span className="dtx">Sign out</span></button>
+    </div>
+  </>;
+
+  const wide = view === "import" || view === "errors" || view === "share";
+  return (
+    <div ref={box} className={"drill" + (wide ? " wide" : "")} role="dialog" aria-modal="false" aria-labelledby="acctTitle" style={pos}>
+      {content}
+    </div>
+  );
+}
+
+/** Theme as a list you can see, then mode and spacing. */
+function Appearance({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
+  const set = (k: keyof Settings, v: string) => setSettings({ ...settings, [k]: v } as Settings);
+  return <>
+    <h3>Theme</h3>
+    <div className="thlist" role="radiogroup" aria-label="Theme">
+      {THEMES.map(([id, nm]) => (
+        <button key={id} role="radio" aria-checked={settings.theme === id} className="drow2 th" onClick={() => set("theme", id)}>
+          <span className="sw mini" data-sw={id} aria-hidden="true"><i /><i /><i /></span>
+          <span className="dtx">{nm}</span>{settings.theme === id && <span className="tick" aria-hidden="true">✓</span>}
+        </button>
+      ))}
+    </div>
+    <h3>Mode</h3>
+    <div className="dseg full" role="group" aria-label="Mode">
+      {(["light", "dark"] as const).map(m => <button key={m} aria-pressed={settings.mode === m} onClick={() => set("mode", m)}>{m === "light" ? "Light" : "Dark"}</button>)}
+    </div>
+    <h3>Spacing</h3>
+    <div className="dseg full" role="group" aria-label="Spacing">
+      {(["comfortable", "compact"] as const).map(d => <button key={d} aria-pressed={settings.density === d} onClick={() => set("density", d)}>{d === "comfortable" ? "Comfortable" : "Compact"}</button>)}
+    </div>
+  </>;
 }

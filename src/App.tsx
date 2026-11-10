@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useReference } from "./hooks/useReference";
 import { hasGuestData, useSaves } from "./hooks/useSaves";
@@ -10,7 +10,7 @@ import { ageOK, applyEdit, cloneState, countGot, eff, emptyState, timeOK } from 
 import { downloadCsv, downloadXlsx } from "./lib/sheets";
 import { ls } from "./lib/storage";
 import type { AgeFilter, ListState, Order, RowEdit, TimeFilter } from "./lib/types";
-import { AccountPanel } from "./components/AccountPanel";
+import { AccountPanel, type AcctView } from "./components/AccountPanel";
 import { ChecklistTable } from "./components/ChecklistTable";
 import { FilterBar, ListMenuItems } from "./components/FilterBar";
 import { MoreMenu } from "./components/MoreMenu";
@@ -48,6 +48,10 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(() => (wide() ? ls.get("oot-panel-open", true) : false));
   const [srcOpen, setSrcOpen] = useState(false);
   const [acctOpen, setAcctOpen] = useState(false);
+  // On desktop the account menu pops out beside whatever opened it
+  const [acctFrom, setAcctFrom] = useState<{ el: HTMLElement | null; view?: AcctView }>({ el: null });
+  const closeAcct = useCallback(() => setAcctOpen(false), []);
+  const openAcct = (e: { currentTarget: HTMLElement }, view?: AcctView) => { setAcctFrom({ el: e.currentTarget, view }); setAcctOpen(true); };
   const [saving, setSaving] = useState(false);
 
   const lists = ref?.lists ?? [];
@@ -189,7 +193,7 @@ export default function App() {
           {/* Phones: the list ⋮ sits beside the avatar to keep the filter bar to two rows */}
           {phone && listMenu}
           {/* Phones (and desktop with the lists panel closed): account button up here. Desktop: bottom of the lists panel. */}
-          <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" aria-label={user ? "Account and settings" : "Sign in and settings"} onClick={() => setAcctOpen(true)}>
+          <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" aria-label={user ? "Account and settings" : "Sign in and settings"} aria-expanded={acctOpen} onClick={e => acctOpen ? setAcctOpen(false) : openAcct(e)}>
             <Avatar user={user} />
             <span>{user ? active?.name ?? "Account" : "Sign in"}</span>
           </button>
@@ -198,8 +202,8 @@ export default function App() {
       {list && <p className="sub">{list.sub}</p>}
       {legal ? <LegalPage id={legal} /> : <>
       <div className="savebar">
-        {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={() => setAcctOpen(true)}>Sign in</button> to keep it on every device, use several save files and share them.</>
-          : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={() => setAcctOpen(true)}>Switch or share</button>
+        {!user ? <>Your progress is saved in this browser only. <button className="linkbtn" onClick={openAcct}>Sign in</button> to keep it on every device, use several save files and share them.</>
+          : active && <>Save file: <b>{active.name}</b>{active.role !== "owner" && <> · shared with you as <b>{active.role}</b></>} <button className="linkbtn" onClick={e => openAcct(e, "saves")}>Switch or share</button>
             {active.role === "viewer" && <span className="ro">View only</span>}</>}
         {lists.length > 0 && <span className="pctchip" title={`${overall.done} of ${overall.total} collected across every list`}>
           <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span>{overall.pct}% complete</span>}
@@ -228,7 +232,7 @@ export default function App() {
 
     {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={liveAll} overallPct={overall.pct} curId={list?.id ?? ""} editing={editing}
       onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)}
-      account={<button className="acard" aria-haspopup="dialog" onClick={() => setAcctOpen(true)}>
+      account={<button className="acard" aria-haspopup="dialog" aria-expanded={acctOpen} onClick={e => acctOpen ? setAcctOpen(false) : openAcct(e)}>
         <Avatar user={user} />
         <span className="acard-text">
           <b>{user ? nameOf(user) : "Sign in"}</b>
@@ -239,7 +243,7 @@ export default function App() {
 
     {!srcOpen && <button className="fab" aria-label="Show sources" aria-haspopup="dialog" onClick={() => setSrcOpen(true)}>?</button>}
     {ref && lists.length > 0 && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={firstId} />}
-    {lists.length > 0 && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
+    {lists.length > 0 && <AccountPanel open={acctOpen} onClose={closeAcct} anchor={acctFrom.el} startView={acctFrom.view} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
       welcoming={welcoming} onWelcomed={() => setWelcoming(false)}
       settings={settings} setSettings={setSettings}
       lists={lists} curId={firstId} saves={saves.saves} active={active} progress={saves.progress} activeId={saves.activeId} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}

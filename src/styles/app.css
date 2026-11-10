@@ -553,3 +553,47 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .dseg button[aria-pressed="true"]{background:var(--active);color:var(--bg)}
 .dseg button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
 .wav{overflow:hidden}
+/* ---------- Desktop account menu: slim drill-in popover ---------- */
+.drill{position:fixed;z-index:90;width:340px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:6px;
+  animation:drillIn .14s ease-out}
+.drill.wide{width:min(440px,calc(100vw - 24px))}
+@keyframes drillIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.drill{animation:none}}
+:root[data-skin="hyrule"] .drill{border-color:var(--gold);box-shadow:0 0 0 3px var(--surface),0 0 0 4px var(--silver),0 18px 50px rgba(0,0,0,.45)}
+.drill .did{display:flex;align-items:center;gap:10px;padding:8px 8px 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.drill .did .wav{width:36px;height:36px}
+.drill .dbody{overflow:auto;min-height:0;padding:2px 2px 4px}
+.drill .dbody.root{display:flex;flex-direction:column}
+.drill hr{border:0;height:1px;background:var(--line);margin:4px 6px;width:auto}
+.drow2{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:8px;background:none;color:var(--fg);font:600 .92rem var(--body);text-align:left;cursor:pointer}
+.drow2:hover{background:var(--bg)}
+.drow2:focus-visible,.dback:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.dtx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.dtx small{font-weight:400;font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dico{width:18px;height:18px;flex:0 0 auto;color:var(--muted)}
+.chev{color:var(--muted);font-size:1.15rem;line-height:1}
+.drow2:hover .chev,.drow2:hover .dico{color:var(--gold)}
+.dtag{font:700 .68rem var(--body);color:var(--bg);background:var(--muted);border-radius:999px;padding:1px 7px}
+.dring{--p:0;width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;background:conic-gradient(var(--gold) calc(var(--p) * 1%),var(--line) 0)}
+.dring i{width:12px;height:12px;border-radius:50%;background:var(--surface)}
+.drow2:hover .dring i{background:var(--bg)}
+.dhd{display:flex;align-items:center;gap:6px;padding:4px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.dhd h2{flex:1;margin:0 56px 0 0;text-align:center;font:700 .95rem var(--display);letter-spacing:.03em}
+.dback{border:0;background:none;color:var(--gold);font:700 .85rem var(--body);padding:6px;border-radius:6px;cursor:pointer}
+.dback:hover{background:var(--bg)}
+.drill h3{margin:10px 6px 4px;font:700 .7rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.drill .shead{margin:2px 0 2px}.drill .shead h3{margin:6px}
+.drill .shead .linkbtn{margin-right:6px;text-decoration:none;font-weight:700}
+.drill .slist{margin:0 0 6px}
+.drill .importbox{margin:6px;padding:8px 10px;border:1px dashed var(--line);border-radius:8px}
+.drill .who{padding:4px 6px 12px}
+.drill .adanger{text-align:left;margin:6px}
+.drill .dangerbox{margin:6px}
+.drill .aform,.drill .alinks,.drill .anote,.drill .plist,.drill .errlist,.drill .implist{margin-inline:6px}
+.thlist{display:flex;flex-direction:column}
+.drow2.th{padding:7px 10px;font-weight:500}
+.drow2.th[aria-checked="true"]{background:var(--bg);font-weight:700}
+.drow2.th .tick{color:var(--gold)}
+.dseg.full{display:flex;margin:0 6px 6px}
+.dseg.full button{flex:1}
