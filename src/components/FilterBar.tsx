@@ -1,5 +1,5 @@
 import { MoreMenu } from "./MoreMenu";
-import type { AgeFilter, Order, Settings, TimeFilter } from "../lib/types";
+import type { AgeFilter, Order, TimeFilter } from "../lib/types";
 
 const AGE_LABEL: Record<AgeFilter, string> = { all: "All", Child: "Child", Adult: "Adult", travel: "Time travel" };
 const TIME_LABEL: Record<TimeFilter, string> = { all: "Any time", Day: "Day", Night: "Night" };
@@ -12,7 +12,6 @@ export function FilterBar(p: {
   hideDone: boolean; setHideDone: (b: boolean) => void;
   canEdit: boolean; onStartEdit: () => void; onCsv: () => void; onXlsx: () => void;
   order: Order; setOrder: (o: Order) => void; sortable: boolean; hasItemSort: boolean;
-  settings: Settings; setSettings: (s: Settings) => void;
 }) {
   return (
     <div className="bar">
@@ -36,7 +35,7 @@ export function FilterBar(p: {
           value={p.search} onChange={e => p.setSearch(e.target.value)} />
         <datalist id="areas">{p.areaNames.map(a => <option key={a} value={a} />)}</datalist>
       </div>
-      <MoreMenu settings={p.settings} setSettings={p.setSettings} items={close => <>
+      <MoreMenu items={close => <>
         <label className="kitem" role="menuitemcheckbox" aria-checked={p.hideDone}>
           <input type="checkbox" checked={p.hideDone} onChange={e => p.setHideDone(e.target.checked)} /> Hide collected
         </label>

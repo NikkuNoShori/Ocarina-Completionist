@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import type { User } from "@supabase/supabase-js";
 import { sb } from "../lib/supabase";
 import { completion, percent, totalItems } from "../lib/progress";
-import type { ChecklistList, Progress, SaveFile } from "../lib/types";
+import type { ChecklistList, Progress, SaveFile, Settings } from "../lib/types";
+import { Avatar } from "./Avatar";
+import { DisplaySettings } from "./DisplaySettings";
 import { useNotify, type Notify } from "./Notify";
 import { ProgressSummary } from "./ProgressSummary";
 import { ConfirmButton, Modal } from "./ui";
@@ -25,6 +27,7 @@ interface Props {
   welcoming: boolean; onWelcomed: () => void;
   lists: ChecklistList[]; curId: string; saves: SaveFile[]; active: SaveFile | null;
   progress: Progress; activeId: string | null;
+  settings: Settings; setSettings: (s: Settings) => void;
   onSwitch: (id: string) => void; reloadSaves: () => Promise<SaveFile[] | null>;
   guestData: boolean; onCopyGuest: () => Promise<void>;
   onImport: (listId: string, ns: number[]) => Promise<boolean>;
@@ -47,7 +50,10 @@ export function AccountPanel(p: Props) {
   const welcome = p.welcoming && !!p.user && !p.recovering;
   if (p.recovering && p.user) body = <Recover user={p.user} notify={notify} done={() => { p.onRecovered(); notify.ok("Password updated."); setView("main"); }} />;
   else if (welcome) { title = "Welcome"; body = <Welcome {...p} user={p.user!} notify={notify} done={p.onWelcomed} />; }
-  else if (!p.user) body = <SignIn view={view} go={setView} notify={notify} />;
+  else if (!p.user) body = <>
+    <SignIn view={view} go={setView} notify={notify} />
+    <DisplayBlock {...p} />
+  </>;
   else if (view === "share" && shareSave) { title = "Share"; body = <Share save={shareSave} back={back} notify={notify} reloadSaves={p.reloadSaves} />; }
   else if (view === "errors" && isAdmin) { title = "Error log"; body = <ErrorLog back={back} notify={notify} />; }
   else if (view === "import") { title = "Import"; body = <><p className="alinks top"><button className="linkbtn" onClick={back}>‹ Back</button></p><ImportBox lists={p.lists} curId={p.curId} active={p.active} onImport={p.onImport} notify={notify} /></>; }
@@ -285,6 +291,7 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v:
     {p.guestData && active?.role === "owner" && (
       <p className="importbox">Checkmarks from before you signed in are saved in this browser. <button className="linkbtn" onClick={p.onCopyGuest}>Add them to “{active.name}”</button></p>
     )}
+    <DisplayBlock {...p} />
     <div className="afoot">
       <button className="linkbtn" onClick={() => p.go("import")}>Import</button>
       {p.isAdmin && <button className="linkbtn" onClick={() => p.go("errors")}>Error log</button>}
@@ -292,6 +299,11 @@ function Main(p: Props & { user: User; notify: Notify; isAdmin: boolean; go: (v:
     </div>
     <DeleteAccount notify={notify} onDeleted={p.onClose} />
   </>;
+}
+
+/** Theme, light/dark and spacing, at the bottom of the account menu. */
+function DisplayBlock({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
+  return <section className="dblock"><h3>Display</h3><DisplaySettings settings={settings} setSettings={setSettings} /></section>;
 }
 
 /** A small ⋮ dropdown for one row. */
@@ -331,7 +343,7 @@ function Profile({ user, notify }: { user: User; notify: Notify }) {
   const shown = name || user.email || "";
   return (
     <div className="who">
-      <span className="wav" aria-hidden="true">{shown[0]?.toUpperCase()}</span>
+      <Avatar user={user} label={shown} className="wav" />
       {editing ? (
         <form className="inline" onSubmit={save}>
           <input className="sel" aria-label="Display name" placeholder="Name others see" maxLength={60} autoFocus value={draft} onChange={e => setDraft(e.target.value)} />

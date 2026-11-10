@@ -15,7 +15,7 @@ import { ChecklistTable } from "./components/ChecklistTable";
 import { FilterBar } from "./components/FilterBar";
 import { LEGAL_TITLES, LegalPage, type LegalId } from "./components/LegalPage";
 import { ListsDrawer } from "./components/ListsDrawer";
-import { MoreMenu } from "./components/MoreMenu";
+import { Avatar, nameOf } from "./components/Avatar";
 import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
 import { ProgressSummary } from "./components/ProgressSummary";
@@ -157,7 +157,6 @@ export default function App() {
 
   if (refError) return (
     <div className="wrap crash">
-      <header className="titlebar"><div className="tleft" /><div className="tactions"><MoreMenu settings={settings} setSettings={setSettings} /></div></header>
       <h1>Couldn't load the checklists</h1>
       <p className="sub">{friendly(refError)}</p>
       <button className="primary" onClick={retry}>Try again</button>
@@ -181,10 +180,9 @@ export default function App() {
           <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"} {list && <span>· {countGot(pool, state.got)} / {pool.length}</span>}</h1>
         </div>
         <div className="tactions">
-          {/* On checklist pages the ⋮ menu sits at the end of the filter bar; everywhere else it's here */}
-          {!list && <MoreMenu settings={settings} setSettings={setSettings} />}
-          <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" onClick={() => setAcctOpen(true)}>
-            <span className="av" aria-hidden="true">{user ? (user.email ?? "?")[0].toUpperCase() : "?"}</span>
+          {/* Phones (and desktop with the lists panel closed): account button up here. Desktop: bottom of the lists panel. */}
+          <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" aria-label={user ? "Account and settings" : "Sign in and settings"} onClick={() => setAcctOpen(true)}>
+            <Avatar user={user} />
             <span>{user ? active?.name ?? "Account" : "Sign in"}</span>
           </button>
         </div>
@@ -208,7 +206,6 @@ export default function App() {
         hideDone={hideDone} setHideDone={setHideDone}
         canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
         order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups}
-        settings={settings} setSettings={setSettings}
       />}
       {editing && <div className="editbar">Editing: change the area, location, map level, age, time or requirements on any row. Nothing is saved until you tap Done editing.{" "}
         <button className="linkbtn" onClick={resetAll}>Reset all edits on this list</button></div>}
@@ -224,12 +221,21 @@ export default function App() {
     </div>
 
     {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={liveAll} overallPct={overall.pct} curId={list?.id ?? ""} editing={editing}
-      onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)} />}
+      onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)}
+      account={<button className="acard" aria-haspopup="dialog" onClick={() => setAcctOpen(true)}>
+        <Avatar user={user} />
+        <span className="acard-text">
+          <b>{user ? nameOf(user) : "Sign in"}</b>
+          <small>{user ? active?.name ?? "Account" : "Save progress on every device"}</small>
+        </span>
+        <span className="acard-gear" aria-hidden="true">⚙</span>
+      </button>} />}
 
     {!srcOpen && <button className="fab" aria-label="Show sources" aria-haspopup="dialog" onClick={() => setSrcOpen(true)}>?</button>}
     {ref && lists.length > 0 && <SourcesPanel open={srcOpen} onClose={() => setSrcOpen(false)} lists={lists} sources={ref.sources} notes={ref.notes} curId={firstId} />}
     {lists.length > 0 && <AccountPanel open={acctOpen} onClose={() => setAcctOpen(false)} user={user} recovering={recovering} onRecovered={() => setRecovering(false)}
       welcoming={welcoming} onWelcomed={() => setWelcoming(false)}
+      settings={settings} setSettings={setSettings}
       lists={lists} curId={firstId} saves={saves.saves} active={active} progress={saves.progress} activeId={saves.activeId} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
       guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
     {/* Opened a playthrough someone just shared: show where you are and how far along it is */}
