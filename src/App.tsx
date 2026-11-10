@@ -46,6 +46,10 @@ export default function App() {
   // Phones pick an area from a dropdown instead of typing a search
   const [area, setArea] = useState("");
   const phone = useMedia("(max-width:640px)");
+  // Below desktop width the lists open as a bottom sheet from the title in a sticky top bar
+  const compact = useMedia("(max-width:899px)");
+  // Crossing into phone/tablet width closes the panel (it would otherwise pop up as a sheet); back to desktop restores it
+  useEffect(() => { setPanelOpen(compact ? false : ls.get("oot-panel-open", true)); }, [compact]);
   const [draft, setDraft] = useState<{ before: ListState; after: ListState } | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => (wide() ? ls.get("oot-panel-open", true) : false));
   const [srcOpen, setSrcOpen] = useState(false);
@@ -193,41 +197,51 @@ export default function App() {
 
   return <>
     <div className="wrap">
-      <header className="titlebar">
-        <div className="tleft">
-          <button className={"ptoggle" + (panelOpen ? " on" : "")} aria-expanded={panelOpen} aria-controls="drawer" title="Toggle the lists panel" onClick={() => togglePanel(!panelOpen)}>
-            <PanelIcon /><span className="vh">Lists panel</span>
-          </button>
-          <div className="ttext">
-            <h1>{legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading"}</h1>
-            {list && (() => { const got = countGot(pool, state.got), pc = pool.length ? Math.round(got / pool.length * 100) : 0; return (
-              <p className="tmeta"><span className="tnum"><b>{got}</b> / {pool.length}</span> collected
-                <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></p>); })()}
-          </div>
-        </div>
-        <div className="tactions">
-          {/* Phones: the list ⋮ sits beside the avatar to keep the filter bar to two rows */}
+      {(() => {
+        const title = legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading";
+        const got = list ? countGot(pool, state.got) : 0, pc = pool.length ? Math.round(got / pool.length * 100) : 0;
+        const meta = list && <p className="tmeta"><span className="tnum"><b>{got}</b> / {pool.length}</span> collected
+          <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></p>;
+        const actions = <div className="tactions">
+          {/* Phones: the list ⋮ sits beside the avatar */}
           {phone && listMenu}
-          {/* Phones (and desktop with the lists panel closed): account button up here. Desktop: bottom of the lists panel. */}
+          {/* Phones/tablets (and desktop with the lists panel closed): account button up here. Desktop: bottom of the lists panel. */}
           <button className={"acctbtn" + (user ? " in" : "")} aria-haspopup="dialog" aria-label={user ? "Account and settings" : "Sign in and settings"} aria-expanded={acctOpen} onClick={e => acctOpen ? setAcctOpen(false) : openAcct(e)}>
             <Avatar user={user} />
             <span>{user ? active?.name ?? "Account" : "Sign in"}</span>
           </button>
-        </div>
-      </header>
+        </div>;
+        return compact ? <>
+          <header className="appbar">
+            <h1><button className="lpick" aria-haspopup="dialog" aria-expanded={panelOpen} aria-controls="drawer" onClick={() => setPanelOpen(o => !o)}>
+              <span className="lpname">{title}</span>
+              <svg className="lpchev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              <span className="vh"> (switch list)</span>
+            </button></h1>
+            {actions}
+          </header>
+          <div className="titlebar tsub">{meta}</div>
+        </> : (
+          <header className="titlebar">
+            <div className="tleft">
+              <button className={"ptoggle" + (panelOpen ? " on" : "")} aria-expanded={panelOpen} aria-controls="drawer" title="Toggle the lists panel" onClick={() => togglePanel(!panelOpen)}>
+                <PanelIcon /><span className="vh">Lists panel</span>
+              </button>
+              <div className="ttext"><h1>{title}</h1>{meta}</div>
+            </div>
+            {actions}
+          </header>
+        );
+      })()}
       {list && <p className="sub">{list.sub}</p>}
       {legal ? <LegalPage id={legal} /> : <>
-      <div className="savecard">
-        <span className="scl">
-          <span className="sclab">{user ? (active && active.role !== "owner" ? `Save file · shared, ${active.role === "viewer" ? "view only" : "can edit"}` : "Save file") : "Not signed in"}</span>
-          <b className="scname">{user ? active?.name ?? "…" : "This browser only"}</b>
-        </span>
-        {lists.length > 0 && <span className="scpct" title={`${overall.done} of ${overall.total} collected across every list`}>
-          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span><b>{overall.pct}%</b> overall</span>}
+      <div className="overall">
+        {lists.length > 0 && <span className="ovl" title={`${overall.done} of ${overall.total} collected across every list in this save file`}>
+          <span className="sclab">Overall completion</span>
+          <span className="pctbar"><i style={{ width: `${overall.pct}%` }} /></span><b>{overall.pct}%</b></span>}
+        {user && active?.role === "viewer" && <span className="ro">View only</span>}
         {saving && <span className="ro">Saving…</span>}
-        {user
-          ? <button className="scbtn" onClick={e => openAcct(e, "saves")}>Switch or share</button>
-          : <button className="scbtn" onClick={openAcct} title="Keep progress on every device, use several save files and share them">Sign in</button>}
+        {!user && <span className="ovguest">Saved in this browser only · <button className="linkbtn" onClick={openAcct}>Sign in</button> to sync</span>}
       </div>
 
       {list && <FilterBar
@@ -252,7 +266,7 @@ export default function App() {
     </div>
 
     {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={liveAll} overallPct={overall.pct} curId={list?.id ?? ""} editing={editing}
-      onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => togglePanel(false)}
+      sheet={compact} onPick={() => { if (!wide()) setPanelOpen(false); }} onClose={() => compact ? setPanelOpen(false) : togglePanel(false)}
       account={<button className="acard" aria-haspopup="dialog" aria-expanded={acctOpen} onClick={e => acctOpen ? setAcctOpen(false) : openAcct(e)}>
         <Avatar user={user} />
         <span className="acard-text">

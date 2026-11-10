@@ -633,3 +633,42 @@ h1 #h1n{font-variant-numeric:tabular-nums}
   .scbtn{padding:5px 10px}
   .tbar{width:64px}
 }
+/* ---------- Overall completion line ---------- */
+.overall{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin:0 0 14px;font-size:.88rem;color:var(--muted)}
+.ovl{display:inline-flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.ovl .pctbar{width:110px;height:6px}
+.ovl b{color:var(--gold);font-weight:700}
+.overall .ro{margin:0}
+.ovguest .linkbtn{font-weight:700}
+/* ---------- Phones & tablets: sticky top bar, title opens the lists ---------- */
+.appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;
+  margin:-28px calc(-1 * max(16px,env(safe-area-inset-left,0px))) 0;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));
+  background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+:root[data-skin="hyrule"] .appbar{border-bottom-color:var(--silver)}
+.appbar h1{flex:1 1 auto;min-width:0;margin:0;font-size:1.3rem;line-height:1.2}
+:root[data-skin="golden"] .appbar h1{font-size:1.35rem}
+.lpick{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin-left:-8px;padding:7px 8px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-align:left;cursor:pointer}
+.lpick:hover,.lpick[aria-expanded="true"]{background:var(--surface)}
+.lpick:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.lpname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lpchev{flex:0 0 auto;color:var(--gold);transition:transform .15s}
+.lpick[aria-expanded="true"] .lpchev{transform:rotate(180deg)}
+.appbar .tactions{flex:0 0 auto}
+.titlebar.tsub{margin-top:12px}
+:root[data-skin="royal"] .titlebar.tsub{background:none;color:inherit;margin-inline:0;padding:0 0 12px;border-radius:0}
+.wrap:has(.appbar){padding-top:28px}
+@media (max-width:640px){.bar{position:static}}
+@media (min-width:641px) and (max-width:899px){.bar{top:62px}}
+/* The lists as a bottom sheet */
+.lscrim{position:fixed;inset:0;z-index:60;background:rgba(5,8,20,.55);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s ease-out}
+.drawer.lsheet{position:relative;inset:auto;width:min(560px,100%);max-height:82vh;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;
+  box-shadow:0 -10px 40px rgba(0,0,0,.35);padding:8px 14px calc(14px + env(safe-area-inset-bottom,0px));gap:6px;animation:sheetUp .2s ease-out}
+:root[data-skin="hyrule"] .drawer.lsheet{border-color:var(--gold);border-right-color:var(--gold)}
+.grab{align-self:center;width:40px;height:4px;border-radius:2px;background:var(--line);margin:2px 0 4px}
+.lshead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4px 6px;border-bottom:1px solid var(--line)}
+.lshead h2{margin:0;font:700 1.1rem var(--display);color:var(--gold)}
+.lsheet nav{overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding-top:4px}
+.lsheet a{padding:11px 12px}
+@keyframes sheetUp{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.lscrim,.drawer.lsheet{animation:none}}
