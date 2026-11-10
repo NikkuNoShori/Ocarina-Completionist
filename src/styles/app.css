@@ -705,3 +705,22 @@ h1 #h1n{font-variant-numeric:tabular-nums}
   td.c,td.n,td.lvc,td.agec{margin-right:12px}
 }
 @media (max-width:640px){td.lvc:empty{display:none!important}}
+/* ---------- Guide links: their own field, never struck through ---------- */
+.gchips{display:flex;flex-wrap:wrap;gap:6px}
+.gchip{display:inline-flex;align-items:center;gap:4px;font:600 .78rem var(--body);color:var(--gold);text-decoration:none;white-space:nowrap;
+  border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--surface)}
+.gchip:hover{border-color:var(--gold)}
+.gchip:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+:root[data-skin="hyrule"] .gchip{border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+td.guides{width:1%}
+td.guides .gchips{flex-direction:column;align-items:flex-start}
+tr.done .gchip{opacity:.85}
+@media (max-width:640px){
+  tbody tr:not(.area):not(.empty){grid-template-areas:"c n loc loc loc loc" ". . lv age time ." ". . req req req req" ". . guides guides guides guides"}
+  td.guides{grid-area:guides;width:auto}
+  td.guides.none{display:none!important}
+  td.guides .clab{display:block;margin:0 0 4px}
+  td.guides .gchips{flex-direction:row}
+  .gchip{padding:7px 12px;font-size:.82rem}
+}
+@media (max-width:640px){table.editing tbody tr:not(.area):not(.empty){grid-template-areas:"c n loc" ". . lv" ". . age" ". . time" ". . req" ". . guides"}}

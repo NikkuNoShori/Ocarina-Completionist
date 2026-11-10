@@ -5,6 +5,9 @@ import type { ChecklistList, EffRow, Order, RowEdit } from "../lib/types";
 const AGES = ["Child", "Adult", "Either", "Both"];
 const TIMES = ["Any", "Day", "Night"];
 
+/** "RPG Site steps ↗" → "RPG Site steps" (the chip draws its own arrow). */
+const linkName = (label: string) => label.replace(/\s*↗\s*$/, "");
+
 /** Pill text that reads on its own, and a hint for the less obvious ones. */
 const AGE_TEXT: Record<string, string> = { Either: "Either age", Both: "Both ages" };
 const AGE_TIP: Record<string, string> = { Either: "Child or adult Link can do it", Both: "Needs a visit as child and as adult" };
@@ -23,15 +26,15 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
   return (
     <div className="tablebox">
       <table className={editing ? "editing" : undefined}>
-        <thead><tr><th></th><th>#</th><th>Location</th><th>Floor</th><th>Age</th><th>Time</th><th>{list.req_label}</th></tr></thead>
+        <thead><tr><th></th><th>#</th><th>Location</th><th>Floor</th><th>Age</th><th>Time</th><th>{list.req_label}</th><th>Guides</th></tr></thead>
         <tbody>
-          {!rows.length && <tr className="empty"><td colSpan={7}>{emptyText}</td></tr>}
+          {!rows.length && <tr className="empty"><td colSpan={8}>{emptyText}</td></tr>}
           {rows.map(r => {
             const k = groupOf(r);
             let head = null;
             if (k !== last) {
               const inG = all.filter(x => groupOf(x) === k), g = inG.filter(x => got.has(x.n)).length;
-              head = <tr className="area"><td colSpan={7}><div className="ahead"><span>{k}</span><span className={"acount" + (g === inG.length ? " full" : "")}>{g} / {inG.length}</span></div></td></tr>;
+              head = <tr className="area"><td colSpan={8}><div className="ahead"><span>{k}</span><span className={"acount" + (g === inG.length ? " full" : "")}>{g} / {inG.length}</span></div></td></tr>;
               last = k;
             }
             const done = got.has(r.n);
@@ -50,7 +53,6 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                       <textarea key={r.l} className="ed" id={`${P}-l${r.n}`} aria-label={`Location for #${r.n}`} defaultValue={r.l} onBlur={e => e.target.value.trim() !== r.l && onEdit(r.n, "l", e.target.value.trim())} />
                     </> : <>{byItem && <div className="rowarea">{r.a}</div>}{r.l}</>}
                     {r.edited && <><span className="edited">Edited</span>{editing && <button className="linkbtn undo" onClick={() => onUndo(r.n)}>Undo</button>}</>}
-                    {r.links.length > 0 && <div className="note links">{r.links.map(x => <a key={x.label} className="glink" href={x.href} target="_blank" rel="noopener">{x.label}</a>)}</div>}
                   </td>
                   <td className="lvc">
                     {(editing || r.lv) && <span className="clab" aria-hidden="true">Floor</span>}
@@ -82,6 +84,14 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                     {editing
                       ? <input key={r.note} className="ed" id={`${P}-r${r.n}`} aria-label={`Requirements for #${r.n}`} defaultValue={r.note} onBlur={e => e.target.value.trim() !== r.note && onEdit(r.n, "note", e.target.value.trim())} />
                       : r.note || "—"}
+                  </td>
+                  <td className={"guides" + (r.links.length ? "" : " none")}>
+                    <span className="clab" aria-hidden="true">Guides</span>
+                    {r.links.length > 0 && <span className="gchips">{r.links.map(x => (
+                      <a key={x.href + x.label} className="gchip" href={x.href} target="_blank" rel="noopener" title={`Open ${linkName(x.label)} in a new tab`}>
+                        {linkName(x.label)}
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
+                      </a>))}</span>}
                   </td>
                 </tr>
               </Fragment>
