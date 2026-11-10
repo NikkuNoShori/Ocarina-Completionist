@@ -5,6 +5,10 @@ import type { ChecklistList, EffRow, Order, RowEdit } from "../lib/types";
 const AGES = ["Child", "Adult", "Either", "Both"];
 const TIMES = ["Any", "Day", "Night"];
 
+/** Pill text that reads on its own, and a hint for the less obvious ones. */
+const AGE_TEXT: Record<string, string> = { Either: "Either age", Both: "Both ages" };
+const AGE_TIP: Record<string, string> = { Either: "Child or adult Link can do it", Both: "Needs a visit as child and as adult" };
+
 export function ChecklistTable({ list, rows, all, got, order, editing, readOnly, onToggle, onEdit, onUndo, emptyText }: {
   list: ChecklistList; rows: EffRow[]; all: EffRow[]; got: Set<number>; order: Order; editing: boolean; readOnly: boolean;
   onToggle: (n: number, on: boolean) => void; onEdit: (n: number, field: keyof RowEdit, value: string) => void; onUndo: (n: number) => void;
@@ -19,7 +23,7 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
   return (
     <div className="tablebox">
       <table className={editing ? "editing" : undefined}>
-        <thead><tr><th></th><th>#</th><th>Location</th><th>Map Level</th><th>Link</th><th>Time</th><th>{list.req_label}</th></tr></thead>
+        <thead><tr><th></th><th>#</th><th>Location</th><th>Floor</th><th>Age</th><th>Time</th><th>{list.req_label}</th></tr></thead>
         <tbody>
           {!rows.length && <tr className="empty"><td colSpan={7}>{emptyText}</td></tr>}
           {rows.map(r => {
@@ -49,28 +53,32 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                     {r.links.length > 0 && <div className="note links">{r.links.map(x => <a key={x.label} className="glink" href={x.href} target="_blank" rel="noopener">{x.label}</a>)}</div>}
                   </td>
                   <td className="lvc">
+                    {(editing || r.lv) && <span className="clab" aria-hidden="true">Floor</span>}
                     {editing
                       ? (DUNGEONS.has(r.a) || r.lv) && <input key={r.lv} className="ed lv" id={`${P}-v${r.n}`} aria-label={`Map level for #${r.n}`} placeholder="e.g. B1"
                           defaultValue={r.lv === "?" ? "" : r.lv} onBlur={e => onEdit(r.n, "lv", e.target.value.trim())} />
-                      : r.lv === "?" ? <span className="lvq" title="Not given in the guides yet">?</span> : r.lv ? <span className="lvtag">{r.lv}</span> : null}
+                      : r.lv === "?" ? <span className="lvq" title="The guides don't say which floor yet">?</span> : r.lv ? <span className="lvtag">{r.lv}</span> : null}
                   </td>
                   <td className="agec">
+                    <span className="clab" aria-hidden="true">Age</span>
                     {editing ? <>
                       <select className="ed" id={`${P}-a${r.n}`} aria-label={`Link age for #${r.n}`} value={r.age} onChange={e => onEdit(r.n, "age", e.target.value)}>
                         {AGES.map(a => <option key={a}>{a}</option>)}
                       </select>
                       <label className="aftog"><input type="checkbox" id={`${P}-f${r.n}`} checked={r.af} onChange={e => onEdit(r.n, "af", e.target.checked ? "1" : "0")} /> Adult first</label>
                     </> : <>
-                      <span className={"pill " + r.age}>{r.age}</span>
+                      <span className={"pill " + r.age} title={AGE_TIP[r.age]}>{AGE_TEXT[r.age] ?? r.age}</span>
                       {r.af && r.age !== "Adult" && <span className="afirst" title="Needs a song learned as adult, then travel back to childhood">Adult first</span>}
                     </>}
                   </td>
                   <td className="timec">
+                    <span className="clab" aria-hidden="true">Time</span>
                     {editing
                       ? <select className="ed" id={`${P}-t${r.n}`} aria-label={`Time for #${r.n}`} value={r.time} onChange={e => onEdit(r.n, "time", e.target.value)}>{TIMES.map(t => <option key={t}>{t}</option>)}</select>
-                      : <span className={"pill " + r.time}>{r.time}</span>}
+                      : <span className={"pill " + r.time}>{r.time === "Any" ? "Any time" : r.time}</span>}
                   </td>
-                  <td className="req">
+                  <td className={"req" + (!editing && !r.note ? " none" : "")}>
+                    <span className="clab" aria-hidden="true">{list.req_label}</span>
                     {editing
                       ? <input key={r.note} className="ed" id={`${P}-r${r.n}`} aria-label={`Requirements for #${r.n}`} defaultValue={r.note} onBlur={e => e.target.value.trim() !== r.note && onEdit(r.n, "note", e.target.value.trim())} />
                       : r.note || "—"}

@@ -690,3 +690,18 @@ h1 #h1n{font-variant-numeric:tabular-nums}
 .zoomc button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
 .zrow{margin:0 6px 6px}.zrow .zoomc{display:flex}.zrow .zoomc .zval{flex:1}
 .appbar:has(.kmenu){z-index:80}
+/* ---------- Field labels on phone cards (the table header does this on wider screens) ---------- */
+.clab{display:none}
+@media (max-width:640px){
+  .clab{display:inline;margin-right:5px;font:700 .64rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);vertical-align:.1em}
+  td.lvc,td.timec{display:flex!important;align-items:center}
+  td.req.none{display:none!important}
+  td.req .clab{display:block;margin:0 0 1px}
+  tbody tr:not(.area):not(.empty){grid-template-columns:36px 30px auto auto auto 1fr;column-gap:12px}
+}
+@media (max-width:640px){
+  /* No column gap on the card grid: spacing comes from the cells, so a missing Floor leaves no hole */
+  tbody tr:not(.area):not(.empty){column-gap:0}
+  td.c,td.n,td.lvc,td.agec{margin-right:12px}
+}
+@media (max-width:640px){td.lvc:empty{display:none!important}}
