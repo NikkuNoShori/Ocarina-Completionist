@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ConfirmButton } from "./ui";
 import type { AgeFilter, Order, TimeFilter } from "../lib/types";
 
 const AGE_LABEL: Record<AgeFilter, string> = { all: "All ages", Child: "Child", Adult: "Adult", travel: "Time travel" };
@@ -10,6 +11,8 @@ export function FilterBar(p: {
   tfilt: TimeFilter; setTfilt: (t: TimeFilter) => void; timeCounts: Record<TimeFilter, string>;
   search: string; setSearch: (s: string) => void; areaNames: string[];
   editing: boolean; onDone: () => void; onCancel: () => void;
+  /** Unsaved edits exist: Cancel then needs a second tap */
+  dirty?: boolean;
   area: string; setArea: (a: string) => void; areaOpts: { name: string; count: string }[]; areaTotal: string;
   /** Phones get dropdowns (age, time, area), and the ⋮ moves up to the header */
   phone: boolean; menu: ReactNode;
@@ -55,7 +58,9 @@ export function FilterBar(p: {
       )}
       {p.editing && <div className="fld f-edit">
         <button className="editbtn" aria-pressed="true" onClick={p.onDone}>Done editing</button>
-        <button className="editbtn cancelbtn" onClick={p.onCancel}>Cancel</button>
+        {p.dirty
+          ? <ConfirmButton className="editbtn cancelbtn" label="Cancel" confirmLabel="Discard changes?" onConfirm={p.onCancel} />
+          : <button className="editbtn cancelbtn" onClick={p.onCancel}>Cancel</button>}
       </div>}
       {p.menu && <div className="fld f-menu">{p.menu}</div>}
     </div>
@@ -67,6 +72,8 @@ export function ListMenuItems(p: {
   close: () => void;
   hideDone: boolean; setHideDone: (b: boolean) => void; editing: boolean;
   canEdit: boolean; onStartEdit: () => void; onCsv: () => void; onXlsx: () => void;
+  /** Admins: how many of this save's edits on this list can be published to everyone */
+  publishCount: number; onPublish: () => void;
   order: Order; setOrder: (o: Order) => void; sortable: boolean; hasItemSort: boolean;
 }) {
   const { close } = p;
@@ -75,6 +82,8 @@ export function ListMenuItems(p: {
       <input type="checkbox" checked={p.hideDone} onChange={e => p.setHideDone(e.target.checked)} /> Hide collected
     </label>
     {p.canEdit && !p.editing && <button className="kitem" role="menuitem" onClick={() => { close(); p.onStartEdit(); }}>Edit details</button>}
+    {p.publishCount > 0 && !p.editing && <ConfirmButton className="kitem kpub" label={`Publish ${p.publishCount} edit${p.publishCount === 1 ? "" : "s"} to everyone`}
+      confirmLabel="Tap again: updates the list for all players" onConfirm={() => { close(); p.onPublish(); }} />}
     <button className="kitem" role="menuitem" onClick={() => { close(); p.onCsv(); }}>Download this list (CSV)</button>
     <button className="kitem" role="menuitem" onClick={() => { close(); p.onXlsx(); }}>Download all lists (Excel)</button>
     {p.sortable && (

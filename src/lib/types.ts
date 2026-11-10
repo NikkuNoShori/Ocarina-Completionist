@@ -14,6 +14,8 @@ export interface ItemRow {
   location: string;
   age: Age;
   night: boolean;
+  /** Any, Day or Night (night is kept in step for older builds) */
+  time_of_day?: "Any" | "Day" | "Night";
   notes: string;
   map_level: string | null;
   adult_first: boolean;

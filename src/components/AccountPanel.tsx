@@ -493,7 +493,7 @@ function Share({ save, back, notify, reloadSaves, inlineBack = true }: { save: S
         <li key={i.id}><span><b>{i.email}</b><small>{i.role === "editor" ? "Can edit" : "View only"} · waiting for them to sign up</small></span>
           <span className="pacts">
             <button className="linkbtn" onClick={async () => { await send(i.email, i.role); load(); }}>Resend</button>
-            <button className="linkbtn danger" onClick={() => cancel(i)}>Cancel</button>
+            <ConfirmButton className="linkbtn danger" label="Cancel" confirmLabel="Tap again to cancel" onConfirm={() => cancel(i)} />
           </span></li>
       )) : <li className="anote">None.</li>}
     </ul>

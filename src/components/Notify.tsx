@@ -6,7 +6,7 @@ export interface ToastAction { label: string; run: () => void }
 interface ToastItem { id: number; kind: Kind; text: string; action?: ToastAction }
 
 export interface Notify {
-  ok: (text: string) => void;
+  ok: (text: string, action?: ToastAction) => void;
   info: (text: string, action?: ToastAction) => void;
   /** Show an error to the person and log it. `fallback` describes what failed, e.g. "Couldn't save". */
   error: (context: string, err: unknown, fallback?: string) => void;
@@ -30,7 +30,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
   }, [dismiss]);
 
   const api = useMemo<Notify>(() => ({
-    ok: text => push("ok", text),
+    ok: (text, action) => push("ok", text, action),
     info: (text, action) => push("info", text, action),
     error: (context, err, fallback) => {
       if (!isExpected(err)) reportError(context, err);

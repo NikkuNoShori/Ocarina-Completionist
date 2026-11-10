@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { sb } from "./lib/supabase";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmButton } from "./components/ui";
 import { useAuth } from "./hooks/useAuth";
 import { useReference } from "./hooks/useReference";
 import { hasGuestData, useSaves } from "./hooks/useSaves";
@@ -153,14 +155,55 @@ export default function App() {
 
   const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
   const cancelEdit = () => { setDraft(null); notify.info("Edits canceled. Nothing was saved."); };
+  const dirty = !!draft && JSON.stringify(draft.before.O) !== JSON.stringify(draft.after.O);
+  // Undo puts back only the details you edited, never checkmarks made since
+  const progressRef = useRef(saves.progress); progressRef.current = saves.progress;
   const doneEdit = async () => {
     if (!draft || !list || saving) return;
     const d = draft; setDraft(null); setSaving(true);
     const ok = await saves.commit(list.id, d.before, d.after);
     setSaving(false);
-    if (ok) notify.ok(user ? `Saved to “${saves.active?.name}”.` : "Saved in this browser.");
+    if (ok && JSON.stringify(d.before.O) !== JSON.stringify(d.after.O)) notify.ok(user ? `Saved to “${saves.active?.name}”.` : "Saved in this browser.", {
+      label: "Undo", run: async () => {
+        const got = progressRef.current[list.id]?.got ?? d.after.got;
+        if (await saves.commit(list.id, { got, O: d.after.O }, { got, O: d.before.O })) notify.info("Edits undone.");
+      },
+    });
   };
-  const resetAll = () => { if (draft) setDraft({ ...draft, after: { ...draft.after, O: {} } }); };
+  // Admins can push this save's edits on a list into the shared list for everyone
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    sb.rpc("am_i_admin").then(({ data, error }) => { if (!error) setIsAdmin(!!data); });
+  }, [user]);
+  const editCount = list ? Object.keys(saves.progress[list.id]?.O ?? {}).length : 0;
+  const publishEdits = async () => {
+    if (!list || !saves.activeId) return;
+    const saveId = saves.activeId, listId = list.id, since = new Date(Date.now() - 60_000).toISOString();
+    const before = saves.progress[list.id]?.O ?? {};
+    const { data, error } = await sb.rpc("publish_save_edits", { p_save: saveId, p_list: listId });
+    if (error) return notify.error("publish edits", error, "Couldn't publish the edits");
+    // The edits now live in the shared list: drop them from this save and fetch the new list
+    saves.setProgress(p => ({ ...p, [list.id]: { ...(p[list.id] ?? emptyState()), O: {} } }));
+    await retry();
+    notify.ok(`Published ${data} edit${data === 1 ? "" : "s"} to everyone's ${list.name} list.`, {
+      label: "Undo", run: async () => {
+        const { error: e } = await sb.rpc("undo_publish", { p_save: saveId, p_list: listId, p_since: since });
+        if (e) return notify.error("undo publish", e, "Couldn't undo the publish");
+        saves.setProgress(p => ({ ...p, [listId]: { ...(p[listId] ?? emptyState()), O: { ...before, ...(p[listId]?.O ?? {}) } } }));
+        await retry();
+        notify.info("Publish undone. The edits are back on your save only.");
+      },
+    });
+  };
+  const resetAll = () => {
+    if (!draft) return;
+    const kept = draft.after.O;
+    setDraft({ ...draft, after: { ...draft.after, O: {} } });
+    notify.info("Cleared every edit on this list. Nothing is saved until you tap Done editing.", {
+      label: "Undo", run: () => setDraft(cur => cur && { ...cur, after: { ...cur.after, O: { ...kept, ...cur.after.O } } }),
+    });
+  };
 
   // Downloads include unsaved edits while editing
   const liveProgress = list && draft ? { ...saves.progress, [list.id]: draft.after } : saves.progress;
@@ -193,6 +236,7 @@ export default function App() {
   const listMenu = list && !legal ? <MoreMenu items={close => <ListMenuItems close={close}
     hideDone={hideDone} setHideDone={setHideDone} editing={editing}
     canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
+    publishCount={isAdmin && user ? editCount : 0} onPublish={publishEdits}
     order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} />} /> : null;
 
   return <>
@@ -250,11 +294,11 @@ export default function App() {
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
         search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
         area={area} setArea={setArea} areaOpts={areaOpts} areaTotal={frac(pool)}
-        editing={editing} onDone={doneEdit} onCancel={cancelEdit}
+        editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty}
         phone={phone} menu={phone ? null : listMenu}
       />}
       {editing && <div className="editbar">Editing: change the area, location, map level, age, time or requirements on any row. Nothing is saved until you tap Done editing.{" "}
-        <button className="linkbtn" onClick={resetAll}>Reset all edits on this list</button></div>}
+        <ConfirmButton className="linkbtn" label="Reset all edits on this list" confirmLabel="Tap again to reset every edit on this list" onConfirm={resetAll} /></div>}
 
       {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
         onToggle={onToggle} onEdit={onEdit} onUndo={onUndo}

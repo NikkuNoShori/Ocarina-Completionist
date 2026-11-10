@@ -5,8 +5,10 @@ export const DUNGEONS = new Set([
   "Water Temple", "Bottom of the Well", "Shadow Temple", "Spirit Temple", "Ganon's Castle",
 ]);
 
+const baseTime = (r: ItemRow) => r.time_of_day ?? (r.night ? "Night" : "Any");
+
 export function baseOf(r: ItemRow): Required<RowEdit> {
-  return { a: r.area, l: r.location, lv: r.map_level ?? "", age: r.age, time: r.night ? "Night" : "Any", note: r.notes, af: r.adult_first ? "1" : "0" };
+  return { a: r.area, l: r.location, lv: r.map_level ?? "", age: r.age, time: baseTime(r), note: r.notes, af: r.adult_first ? "1" : "0" };
 }
 
 export function eff(r: ItemRow, st: ListState): EffRow {
@@ -17,7 +19,7 @@ export function eff(r: ItemRow, st: ListState): EffRow {
     l: o.l ?? r.location,
     lv: o.lv ?? (r.map_level ?? ""),
     age: (o.age ?? r.age) as EffRow["age"],
-    time: (o.time ?? (r.night ? "Night" : "Any")) as EffRow["time"],
+    time: (o.time ?? baseTime(r)) as EffRow["time"],
     note: o.note ?? r.notes,
     af: o.af != null ? o.af === "1" : r.adult_first,
     group: r.item_group,
