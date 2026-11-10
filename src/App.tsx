@@ -43,6 +43,7 @@ export default function App() {
   const setFilt = (age: AgeFilter) => updatePrefs({ age });
   const setTfilt = (time: TimeFilter) => updatePrefs({ time });
   const setHideDone = (b: boolean) => updatePrefs({ hideDone: b });
+  const setShowGuides = (b: boolean) => updatePrefs({ showGuides: b });
   const [search, setSearch] = useState("");
   // Phones pick an area from a dropdown instead of typing a search
   const [area, setArea] = useState("");
@@ -234,6 +235,7 @@ export default function App() {
 
   const listMenu = list && !legal ? <MoreMenu items={close => <ListMenuItems close={close}
     hideDone={hideDone} setHideDone={setHideDone} editing={editing}
+    showGuides={prefs.showGuides} setShowGuides={setShowGuides}
     canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
     publishCount={isAdmin && user ? editCount : 0} onPublish={publishEdits}
     order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} />} /> : null;
@@ -299,7 +301,7 @@ export default function App() {
       {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
       {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
-        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo}
+        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} showGuides={prefs.showGuides}
         emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} matches these filters.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
       </>}

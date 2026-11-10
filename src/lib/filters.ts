@@ -7,13 +7,13 @@ import type { AgeFilter, ChecklistList, Order, TimeFilter } from "./types";
  * Age, time of day and "hide collected" apply to every list; the sort is kept per list, since
  * not every list can sort the same ways. Search stays per visit and clears when you switch lists.
  */
-export type FilterPrefs = { age: AgeFilter; time: TimeFilter; hideDone: boolean; order: Record<string, Order> };
+export type FilterPrefs = { age: AgeFilter; time: TimeFilter; hideDone: boolean; showGuides: boolean; order: Record<string, Order> };
 
 const KEY = "oot-filters-v1";
 const AGES: AgeFilter[] = ["all", "Child", "Adult", "travel"];
 const TIMES: TimeFilter[] = ["all", "Day", "Night"];
 const ORDERS: Order[] = ["area", "story", "item"];
-const DEFAULTS: FilterPrefs = { age: "all", time: "all", hideDone: false, order: {} };
+const DEFAULTS: FilterPrefs = { age: "all", time: "all", hideDone: false, showGuides: true, order: {} };
 
 /** Anything stored by an older build, another tab or a hand edit is checked before it is used. */
 function read(): FilterPrefs {
@@ -26,6 +26,7 @@ function read(): FilterPrefs {
     age: AGES.includes(v.age as AgeFilter) ? (v.age as AgeFilter) : "all",
     time: TIMES.includes(v.time as TimeFilter) ? (v.time as TimeFilter) : "all",
     hideDone: v.hideDone === true,
+    showGuides: v.showGuides !== false,
     order,
   };
 }

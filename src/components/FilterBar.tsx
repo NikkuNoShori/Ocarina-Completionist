@@ -73,6 +73,7 @@ export function FilterBar(p: {
 export function ListMenuItems(p: {
   close: () => void;
   hideDone: boolean; setHideDone: (b: boolean) => void; editing: boolean;
+  showGuides: boolean; setShowGuides: (b: boolean) => void;
   canEdit: boolean; onStartEdit: () => void; onCsv: () => void; onXlsx: () => void;
   /** Admins: how many of this save's edits on this list can be published to everyone */
   publishCount: number; onPublish: () => void;
@@ -82,6 +83,9 @@ export function ListMenuItems(p: {
   return <>
     <label className="kitem" role="menuitemcheckbox" aria-checked={p.hideDone}>
       <input type="checkbox" checked={p.hideDone} onChange={e => p.setHideDone(e.target.checked)} /> Hide collected
+    </label>
+    <label className="kitem" role="menuitemcheckbox" aria-checked={p.showGuides}>
+      <input type="checkbox" checked={p.showGuides} onChange={e => p.setShowGuides(e.target.checked)} /> Show guide links
     </label>
     {p.canEdit && !p.editing && <button className="kitem" role="menuitem" onClick={() => { close(); p.onStartEdit(); }}>Edit details</button>}
     {p.publishCount > 0 && !p.editing && <ConfirmButton className="kitem kpub" label={`Publish ${p.publishCount} edit${p.publishCount === 1 ? "" : "s"} to everyone`}

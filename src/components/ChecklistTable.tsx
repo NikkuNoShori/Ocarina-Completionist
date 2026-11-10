@@ -12,10 +12,10 @@ const linkName = (label: string) => label.replace(/\s*↗\s*$/, "");
 const AGE_TEXT: Record<string, string> = { Either: "Either age", Both: "Both ages" };
 const AGE_TIP: Record<string, string> = { Either: "Child or adult Link can do it", Both: "Needs a visit as child and as adult" };
 
-export function ChecklistTable({ list, rows, all, got, order, editing, readOnly, onToggle, onEdit, onUndo, emptyText }: {
+export function ChecklistTable({ list, rows, all, got, order, editing, readOnly, onToggle, onEdit, onUndo, emptyText, showGuides = true }: {
   list: ChecklistList; rows: EffRow[]; all: EffRow[]; got: Set<number>; order: Order; editing: boolean; readOnly: boolean;
   onToggle: (n: number, on: boolean) => void; onEdit: (n: number, field: keyof RowEdit, value: string) => void; onUndo: (n: number) => void;
-  emptyText: string;
+  emptyText: string; showGuides?: boolean;
 }) {
   const byItem = order === "item" && !!list.item_groups;
   const groupOf = (r: EffRow) => (byItem ? r.group ?? "" : r.a);
@@ -26,15 +26,15 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
   return (
     <div className="tablebox">
       <table className={editing ? "editing" : undefined}>
-        <thead><tr><th></th><th>#</th><th>Location</th><th>Floor</th><th>Age</th><th>Time</th><th>{list.req_label}</th><th>Guides</th></tr></thead>
+        <thead><tr><th></th><th>#</th><th>Location</th><th>Floor</th><th>Age</th><th>Time</th><th>{list.req_label}</th>{showGuides && <th>Guides</th>}</tr></thead>
         <tbody>
-          {!rows.length && <tr className="empty"><td colSpan={8}>{emptyText}</td></tr>}
+          {!rows.length && <tr className="empty"><td colSpan={showGuides ? 8 : 7}>{emptyText}</td></tr>}
           {rows.map(r => {
             const k = groupOf(r);
             let head = null;
             if (k !== last) {
               const inG = all.filter(x => groupOf(x) === k), g = inG.filter(x => got.has(x.n)).length;
-              head = <tr className="area"><td colSpan={8}><div className="ahead"><span>{k}</span><span className={"acount" + (g === inG.length ? " full" : "")}>{g} / {inG.length}</span></div></td></tr>;
+              head = <tr className="area"><td colSpan={showGuides ? 8 : 7}><div className="ahead"><span>{k}</span><span className={"acount" + (g === inG.length ? " full" : "")}>{g} / {inG.length}</span></div></td></tr>;
               last = k;
             }
             const done = got.has(r.n);
@@ -85,14 +85,14 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                       ? <input key={r.note} className="ed" id={`${P}-r${r.n}`} aria-label={`Requirements for #${r.n}`} defaultValue={r.note} onBlur={e => e.target.value.trim() !== r.note && onEdit(r.n, "note", e.target.value.trim())} />
                       : r.note || "—"}
                   </td>
-                  <td className={"guides" + (r.links.length ? "" : " none")}>
+                  {showGuides && <td className={"guides" + (r.links.length ? "" : " none")}>
                     <span className="clab" aria-hidden="true">Guides</span>
                     {r.links.length > 0 && <span className="gchips">{r.links.map(x => (
                       <a key={x.href + x.label} className="gchip" href={x.href} target="_blank" rel="noopener" title={`Open ${linkName(x.label)} in a new tab`}>
                         {linkName(x.label)}
                         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
                       </a>))}</span>}
-                  </td>
+                  </td>}
                 </tr>
               </Fragment>
             );
