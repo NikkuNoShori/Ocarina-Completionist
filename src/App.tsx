@@ -1,6 +1,5 @@
 import { sb } from "./lib/supabase";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ConfirmButton } from "./components/ui";
 import { useAuth } from "./hooks/useAuth";
 import { useReference } from "./hooks/useReference";
 import { hasGuestData, useSaves } from "./hooks/useSaves";
@@ -294,11 +293,10 @@ export default function App() {
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
         search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
         area={area} setArea={setArea} areaOpts={areaOpts} areaTotal={frac(pool)}
-        editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty}
+        editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty} onReset={resetAll}
         phone={phone} menu={phone ? null : listMenu}
       />}
-      {editing && <div className="editbar">Editing: change the area, location, map level, age, time or requirements on any row. Nothing is saved until you tap Done editing.{" "}
-        <ConfirmButton className="linkbtn" label="Reset all edits on this list" confirmLabel="Tap again to reset every edit on this list" onConfirm={resetAll} /></div>}
+      {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
       {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
         onToggle={onToggle} onEdit={onEdit} onUndo={onUndo}

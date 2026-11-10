@@ -12,7 +12,7 @@ export function FilterBar(p: {
   search: string; setSearch: (s: string) => void; areaNames: string[];
   editing: boolean; onDone: () => void; onCancel: () => void;
   /** Unsaved edits exist: Cancel then needs a second tap */
-  dirty?: boolean;
+  dirty?: boolean; onReset: () => void;
   area: string; setArea: (a: string) => void; areaOpts: { name: string; count: string }[]; areaTotal: string;
   /** Phones get dropdowns (age, time, area), and the ⋮ moves up to the header */
   phone: boolean; menu: ReactNode;
@@ -57,6 +57,8 @@ export function FilterBar(p: {
         </label>
       )}
       {p.editing && <div className="fld f-edit">
+        <ConfirmButton className="editbtn resetbtn" label="Reset all edits" confirmLabel="Tap again to reset this list" onConfirm={p.onReset} />
+        <span className="espacer" aria-hidden="true" />
         <button className="editbtn" aria-pressed="true" onClick={p.onDone}>Done editing</button>
         {p.dirty
           ? <ConfirmButton className="editbtn cancelbtn" label="Cancel" confirmLabel="Discard changes?" onConfirm={p.onCancel} />

@@ -724,3 +724,8 @@ tr.done .gchip{opacity:.85}
   .gchip{padding:7px 12px;font-size:.82rem}
 }
 @media (max-width:640px){table.editing tbody tr:not(.area):not(.empty){grid-template-areas:"c n loc" ". . lv" ". . age" ". . time" ". . req" ". . guides"}}
+/* ---------- Edit mode buttons: Reset on the left, Done + Cancel on the right ---------- */
+.bar .f-edit{flex:1 1 100%;order:9;flex-direction:row;align-items:center;gap:10px;margin-left:0}
+.f-edit .espacer{flex:1}
+.resetbtn{background:transparent!important;color:var(--adult)!important;border-color:color-mix(in srgb,var(--adult) 50%,var(--line))!important}
+@media (max-width:640px){.bar .f-edit{grid-column:1/-1;justify-content:stretch}}
