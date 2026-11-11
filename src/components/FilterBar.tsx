@@ -9,7 +9,7 @@ const AGE_TIP = "Child tasks that need something you first get as an adult";
 export function FilterBar(p: {
   filt: AgeFilter; setFilt: (f: AgeFilter) => void; ageCounts: Record<AgeFilter, string>;
   tfilt: TimeFilter; setTfilt: (t: TimeFilter) => void; timeCounts: Record<TimeFilter, string>;
-  search: string; setSearch: (s: string) => void; areaNames: string[];
+  search: string; setSearch: (s: string) => void;
   editing: boolean; onDone: () => void; onCancel: () => void;
   /** Unsaved edits exist: Cancel then needs a second tap */
   dirty?: boolean; onReset: () => void;
@@ -41,19 +41,17 @@ export function FilterBar(p: {
           {(Object.keys(TIME_LABEL) as TimeFilter[]).map(t => <option key={t} value={t}>{TIME_LABEL[t]} ({p.timeCounts[t]})</option>)}
         </select>
       </label>
-      {p.phone ? (
-        <label className="fld f-area"><span className="flab">Area</span>
-          <select className="sel" value={p.area} onChange={e => p.setArea(e.target.value)}>
-            <option value="">All areas ({p.areaTotal})</option>
-            {p.area && !p.areaOpts.some(o => o.name === p.area) && <option value={p.area}>{p.area} (0)</option>}
-            {p.areaOpts.map(o => <option key={o.name} value={o.name}>{o.name} ({o.count})</option>)}
-          </select>
-        </label>
-      ) : (
-        <label className="fld f-area search"><span className="flab">Search</span>
-          <input className="sel" type="search" list="areas" placeholder="Area or location…" autoComplete="off"
+      <label className="fld f-area"><span className="flab">Area</span>
+        <select className="sel" value={p.area} onChange={e => p.setArea(e.target.value)}>
+          <option value="">All areas ({p.areaTotal})</option>
+          {p.area && !p.areaOpts.some(o => o.name === p.area) && <option value={p.area}>{p.area} (0)</option>}
+          {p.areaOpts.map(o => <option key={o.name} value={o.name}>{o.name} ({o.count})</option>)}
+        </select>
+      </label>
+      {!p.phone && (
+        <label className="fld f-search search"><span className="flab">Search</span>
+          <input className="sel" type="search" placeholder="Location or item…" autoComplete="off"
             value={p.search} onChange={e => p.setSearch(e.target.value)} />
-          <datalist id="areas">{p.areaNames.map(a => <option key={a} value={a} />)}</datalist>
         </label>
       )}
       {p.editing && <div className="fld f-edit">
@@ -78,6 +76,8 @@ export function ListMenuItems(p: {
   /** Admins: how many of this save's edits on this list can be published to everyone */
   publishCount: number; onPublish: () => void;
   order: Order; setOrder: (o: Order) => void; sortable: boolean; hasItemSort: boolean;
+  /** All checklists view */
+  allView?: boolean;
 }) {
   const { close } = p;
   return <>
@@ -87,17 +87,17 @@ export function ListMenuItems(p: {
     <label className="kitem" role="menuitemcheckbox" aria-checked={p.showGuides}>
       <input type="checkbox" checked={p.showGuides} onChange={e => p.setShowGuides(e.target.checked)} /> Show guide links
     </label>
-    {p.canEdit && !p.editing && <button className="kitem" role="menuitem" onClick={() => { close(); p.onStartEdit(); }}>Edit details</button>}
+    {p.canEdit && !p.editing && !p.allView && <button className="kitem" role="menuitem" onClick={() => { close(); p.onStartEdit(); }}>Edit details</button>}
     {p.publishCount > 0 && !p.editing && <button className="kitem kpub" role="menuitem" aria-haspopup="dialog" onClick={() => { close(); p.onPublish(); }}>
       Review &amp; publish {p.publishCount} edit{p.publishCount === 1 ? "" : "s"}…</button>}
-    <button className="kitem" role="menuitem" onClick={() => { close(); p.onCsv(); }}>Download this list (CSV)</button>
+    {!p.allView && <button className="kitem" role="menuitem" onClick={() => { close(); p.onCsv(); }}>Download this list (CSV)</button>}
     <button className="kitem" role="menuitem" onClick={() => { close(); p.onXlsx(); }}>Download all lists (Excel)</button>
-    {p.sortable && (
+    {(p.sortable || p.allView) && (
       <div className="ksec" role="group" aria-label="Sort">
         <div className="klabel">Sort</div>
-        {p.hasItemSort && <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "item"} onClick={() => { close(); p.setOrder("item"); }}>By item</button>}
-        {!p.hasItemSort && <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "area"} onClick={() => { close(); p.setOrder("area"); }}>By area</button>}
-        <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "story"} onClick={() => { close(); p.setOrder("story"); }}>Story order</button>
+        {p.hasItemSort && <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "item"} onClick={() => { close(); p.setOrder("item"); }}>{p.allView ? "By list" : "By item"}</button>}
+        {(!p.hasItemSort || p.allView) && <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "area"} onClick={() => { close(); p.setOrder("area"); }}>By area</button>}
+        {!p.allView && <button className="kitem kradio" role="menuitemradio" aria-pressed={p.order === "story"} onClick={() => { close(); p.setOrder("story"); }}>Story order</button>}
       </div>
     )}
   </>;

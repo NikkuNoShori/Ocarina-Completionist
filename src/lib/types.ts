@@ -61,6 +61,8 @@ export interface EffRow {
   group: string | null; links: PhotoLink[]; edited: boolean;
   /** Edited here, and the shared row has changed since: worth a look */
   stale: boolean;
+  /** All checklists view: the row's own number and which list it is from */
+  dn?: number; tag?: string;
 }
 
 export interface SaveFile { id: string; name: string; owner_id: string; updated_at: string; role: Role; owner_email?: string; /** checkmarks in this save */ done?: number }

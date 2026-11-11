@@ -16,6 +16,7 @@ import { ChecklistTable } from "./components/ChecklistTable";
 import { FilterBar, ListMenuItems } from "./components/FilterBar";
 import { MoreMenu } from "./components/MoreMenu";
 import { orderFor, useFilterPrefs, useMedia } from "./lib/filters";
+import { ALL_ID, buildAll, combineState } from "./lib/allview";
 import { LEGAL_TITLES, LegalPage, type LegalId } from "./components/LegalPage";
 import { ListsDrawer } from "./components/ListsDrawer";
 import { Avatar, nameOf } from "./components/Avatar";
@@ -46,13 +47,14 @@ export default function App() {
   const setTfilt = (time: TimeFilter) => updatePrefs({ time });
   const setHideDone = (b: boolean) => updatePrefs({ hideDone: b });
   const setShowGuides = (b: boolean) => updatePrefs({ showGuides: b });
-  // Search text and the phone area picker are remembered for the list they were set on, so they survive
-  // the page reloading (phones often reload a tab you switched away from). Switching lists clears them.
+  // Search text is remembered for the list it was set on, so it survives the page reloading
+  // (phones often reload a tab you switched away from). Switching lists clears it.
   const FIND_KEY = "oot-find-v1";
-  const savedFind = (() => { const f = ls.get<{ list?: string; search?: string; area?: string } | null>(FIND_KEY, null); return f && f.list === window.location.hash.slice(1) ? f : null; })();
+  const savedFind = (() => { const f = ls.get<{ list?: string; search?: string } | null>(FIND_KEY, null); return f && f.list === window.location.hash.slice(1) ? f : null; })();
   const [search, setSearch] = useState(() => (typeof savedFind?.search === "string" ? savedFind.search : ""));
-  // Phones pick an area from a dropdown instead of typing a search
-  const [area, setArea] = useState(() => (typeof savedFind?.area === "string" ? savedFind.area : ""));
+  // The area pick is remembered everywhere (filters.ts), so "Hyrule Field" follows you from list to list
+  const area = prefs.area;
+  const setArea = (a: string) => updatePrefs({ area: a });
   const phone = useMedia("(max-width:640px)");
   // Below desktop width the lists open as a bottom sheet from the title in a sticky top bar
   const compact = useMedia("(max-width:899px)");
@@ -73,8 +75,11 @@ export default function App() {
   const legal: LegalId | null = curId === "privacy" || curId === "terms" ? curId : null;
   // #changes: the history of updates published to the guide
   const page: LegalId | "changes" | null = legal ?? (curId === "changes" ? "changes" : null);
-  const list = page ? undefined : lists.find(L => L.id === curId) ?? lists[0];
-  const firstId = list?.id ?? lists[0]?.id ?? "";
+  // #all is the combined view of every list
+  const allView = useMemo(() => (lists.length ? buildAll(lists) : null), [lists]);
+  const isAll = !page && curId === ALL_ID && !!allView;
+  const list = page ? undefined : isAll ? allView!.list : lists.find(L => L.id === curId) ?? lists[0];
+  const firstId = (isAll ? lists[0]?.id : list?.id) ?? lists[0]?.id ?? "";
   const editing = !!draft;
 
   // Hash routing between lists (locked while editing)
@@ -82,7 +87,7 @@ export default function App() {
     const onHash = () => {
       const id = window.location.hash.slice(1);
       if (draft) { if (list && id !== list.id) window.location.hash = list.id; return; }
-      setCurId(id); setSearch(""); setArea("");
+      setCurId(id); setSearch("");
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -112,8 +117,12 @@ export default function App() {
     if (draft && !saves.canEdit) { setDraft(null); notify.info("This save file is now view only, so your unsaved edits were discarded."); }
   }, [draft, saves.canEdit, notify]);
 
-  const state: ListState = (list && (draft ? draft.after : saves.progress[list.id])) || emptyState();
-  const all = useMemo(() => (list ? list.rows.map(r => eff(r, state)) : []), [list, state]);
+  const state: ListState = useMemo(() => isAll ? combineState(lists, saves.progress)
+    : (list && (draft ? draft.after : saves.progress[list.id])) || emptyState(), [isAll, lists, saves.progress, list, draft]);
+  const all = useMemo(() => (list ? list.rows.map(r => {
+    const e = eff(r, state);
+    return isAll && allView ? { ...e, dn: allView.decode(r.n).n, tag: allView.tag(r.n) } : e;
+  }) : []), [list, state, isAll, allView]);
   const q = search.trim().toLowerCase().replace(/[’']/g, "");
   const aIdx = useMemo(() => {
     const m = { ...(list?.areaIdx ?? {}) };
@@ -140,13 +149,14 @@ export default function App() {
     return [...m].map(([name, rows]) => ({ name, count: frac(rows) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool.length, filt, tfilt, aIdx, state]);
-  useEffect(() => { if (list) ls.set(FIND_KEY, { list: list.id, search, area }); }, [list, search, area]);
-  // The text search only exists on wider screens, and the area picker only on phones
-  useEffect(() => { if (phone) setSearch(""); else setArea(""); }, [phone]);
+  useEffect(() => { if (list) ls.set(FIND_KEY, { list: list.id, search }); }, [list, search]);
+  // The text search only exists on wider screens
+  useEffect(() => { if (phone) setSearch(""); }, [phone]);
 
   // Row actions
   const onToggle = (n: number, on: boolean) => {
     if (!list) return;
+    if (isAll && allView) { const d = allView.decode(n); void saves.setCollected(d.listId, d.n, on); return; }
     if (draft) {
       const got = new Set(draft.after.got); on ? got.add(n) : got.delete(n);
       setDraft({ ...draft, after: { ...draft.after, got } }); return;
@@ -164,7 +174,7 @@ export default function App() {
 
   // Rows you edited that were updated in the shared list since: compare and choose
   const [review, setReview] = useState<number[] | null | false>(false);
-  const staleCount = all.filter(r => r.stale).length;
+  const staleCount = isAll ? 0 : all.filter(r => r.stale).length;
   useEffect(() => { setReview(false); }, [list?.id]);
   // Close the comparison once everything in it is settled
   useEffect(() => {
@@ -178,7 +188,7 @@ export default function App() {
     else if (keep.length && !useShared.length) notify.ok(keep.length === 1 ? `Kept your version of #${keep[0].n}.` : `Kept your version of ${keep.length} spots.`);
   };
 
-  const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
+  const startEdit = () => { if (!list || isAll) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
   const cancelEdit = () => { setDraft(null); notify.info("Edits canceled. Nothing was saved."); };
   const dirty = !!draft && JSON.stringify(draft.before.O) !== JSON.stringify(draft.after.O);
   // Undo puts back only the details you edited, never checkmarks made since
@@ -271,7 +281,7 @@ export default function App() {
     showGuides={prefs.showGuides} setShowGuides={setShowGuides}
     canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
     publishCount={isAdmin && user ? editCount : 0} onPublish={() => setPubOpen(true)}
-    order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} />} /> : null;
+    order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} allView={isAll} />} /> : null;
 
   return <>
     <div className="wrap">
@@ -279,10 +289,11 @@ export default function App() {
         const title = legal ? LEGAL_TITLES[legal] : page === "changes" ? "Guide updates" : list ? list.name : "Loading";
         const got = list ? countGot(pool, state.got) : 0, pc = pool.length ? Math.round(got / pool.length * 100) : 0;
         const meta = list && <p className="tmeta">
-          <span className="tstat" title="On this list, with the age and time filters applied"><span className="tnum"><b>{got}</b> / {pool.length}</span> on this list
-            <span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></span>
-          <span className="tstat" title={`${overall.done} of ${overall.total} collected across every list in this save file`}><b className="tpct">{overall.pct}%</b> overall completion
-            <span className="tbar" aria-hidden="true"><i style={{ width: `${overall.pct}%` }} /></span></span>
+          <span className="tstat tl" title={`${got} of ${pool.length} on this list, with the age and time filters applied`}>
+            <b className="tpct">{pc}%</b> {isAll ? "this view" : "this list"}<span className="tbar" aria-hidden="true"><i style={{ width: `${pc}%` }} /></span></span>
+          <span className="tsep" aria-hidden="true">|</span>
+          <span className="tstat tr" title={`${overall.done} of ${overall.total} collected across every list in this save file`}>
+            <b className="tpct">{overall.pct}%</b> overall<span className="tbar" aria-hidden="true"><i style={{ width: `${overall.pct}%` }} /></span></span>
         </p>;
         const actions = <div className="tactions">
           {/* Phones: the list ⋮ sits beside the avatar */}
@@ -326,7 +337,7 @@ export default function App() {
       {list && <FilterBar
         filt={filt} setFilt={setFilt} ageCounts={ageCounts}
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
-        search={search} setSearch={setSearch} areaNames={[...new Set(all.map(r => r.a))]}
+        search={search} setSearch={setSearch}
         area={area} setArea={setArea} areaOpts={areaOpts} areaTotal={frac(pool)}
         editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty} onReset={resetAll}
         phone={phone} menu={phone ? null : listMenu}
@@ -337,13 +348,13 @@ export default function App() {
       </div>}
       {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
-      {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
-        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} onReview={n => setReview([n])} showGuides={prefs.showGuides}
-        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} matches these filters.` : "Nothing on this list matches these filters."} />
+      {list ? <ChecklistTable list={list} rows={shown} all={isAll && area ? all.filter(r => r.a === area) : all} got={state.got} order={order} editing={editing} readOnly={readOnly}
+        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} onReview={isAll ? undefined : n => setReview([n])} showGuides={prefs.showGuides}
+        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} on this list matches these filters. Pick “All areas” or open All checklists.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
       </>}
 
-      {list && <p className="foot"><span dangerouslySetInnerHTML={{ __html: list.foot }} /> Tap the <b>?</b> button for all sources.</p>}
+      {list && <p className="foot">{list.foot && <span dangerouslySetInnerHTML={{ __html: list.foot }} />} Tap the <b>?</b> button for all sources.</p>}
       <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="#changes">Guide updates</a> · <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
     </div>
 

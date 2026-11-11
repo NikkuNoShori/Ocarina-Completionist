@@ -25,6 +25,16 @@ export function ListsDrawer({ lists, progress, overallPct, curId, editing, onPic
 
   const nav = (
     <nav id="tabs" aria-disabled={editing}>
+      {(() => {
+        const g = lists.reduce((n, L) => n + (progress[L.id]?.got.size ?? 0), 0), t = lists.reduce((n, L) => n + L.rows.length, 0);
+        return (
+          <a href="#all" className="tall" aria-current={curId === "all" ? "page" : undefined} onClick={onPick}>
+            <span className="nm">All checklists</span>
+            <span className="tc">{g}/{t}</span>
+            <span className="bar2"><i style={{ width: `${t ? (g / t) * 100 : 0}%` }} /></span>
+          </a>
+        );
+      })()}
       {lists.map(L => {
         const g = progress[L.id]?.got.size ?? 0, t = L.rows.length;
         return (
