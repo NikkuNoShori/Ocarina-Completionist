@@ -5,8 +5,8 @@ import { reportError } from "../lib/errors";
 import { ls } from "../lib/storage";
 import type { Settings } from "../lib/types";
 
-/** What a first-time visitor sees: Hyrule Night, dark. */
-export const DEFAULT_SETTINGS: Settings = { theme: "hyrule", mode: "dark", density: "comfortable", zoom: 100 };
+/** What a first-time visitor sees: Hyrule Night, light, comfortable. */
+export const DEFAULT_SETTINGS: Settings = { theme: "hyrule", mode: "light", density: "comfortable", zoom: 100 };
 
 /**
  * Theme, light/dark and spacing: kept in this browser and, when signed in, on the account.
