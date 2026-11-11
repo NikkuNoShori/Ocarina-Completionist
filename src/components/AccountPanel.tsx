@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { sb } from "../lib/supabase";
 import { completion, percent, totalItems } from "../lib/progress";
@@ -50,9 +50,9 @@ export function AccountPanel(p: Props) {
   }, [p.user]);
 
   const welcome0 = p.welcoming && !!p.user && !p.recovering;
-  // Desktop, signed in: a slim drill-in menu beside whatever opened it
-  if (desk && p.user && !p.recovering && !welcome0) return p.open
-    ? <Drill {...p} user={p.user} notify={notify} isAdmin={isAdmin} view={view} go={setView}
+  // Signed in: a slim drill-in menu. Desktop: beside whatever opened it. Phones and tablets: a bottom sheet.
+  if (p.user && !p.recovering && !welcome0) return p.open
+    ? <Drill {...p} sheet={!desk} user={p.user} notify={notify} isAdmin={isAdmin} view={view} go={setView}
         shareSave={p.saves.find(s => s.id === shareId)} onShare={id => { setShareId(id); setView("share"); }} />
     : null;
 
@@ -337,6 +337,20 @@ function DisplayBlock({ settings, setSettings }: { settings: Settings; setSettin
 function RowMenu({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLSpanElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [up, setUp] = useState(false);
+  // Inside a scrolling panel the menu could hang off the bottom: open it upward, or scroll it into view
+  useLayoutEffect(() => {
+    if (!open) { setUp(false); return; }
+    const m = menu.current, box = m?.closest(".dbody, .aform, .panel") as HTMLElement | null;
+    if (!m) return;
+    const r = m.getBoundingClientRect(), lim = (box ?? document.documentElement).getBoundingClientRect();
+    const bottom = Math.min(lim.bottom, window.innerHeight);
+    if (r.bottom > bottom) {
+      const above = r.top - Math.max(lim.top, 0) - (wrap.current?.offsetHeight ?? 0);
+      if (above >= r.height) setUp(true); else m.scrollIntoView({ block: "nearest" });
+    }
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
@@ -347,7 +361,7 @@ function RowMenu({ label, children }: { label: string; children: (close: () => v
   return (
     <span className="rowmenu" ref={wrap}>
       <button className="kbtn" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>⋮</button>
-      {open && <div className="rmenu" role="menu">{children(() => setOpen(false))}</div>}
+      {open && <div ref={menu} className={"rmenu" + (up ? " up" : "")} role="menu">{children(() => setOpen(false))}</div>}
     </span>
   );
 }
@@ -627,7 +641,7 @@ function place(anchor: HTMLElement | null | undefined): CSSProperties {
     : { left, top: r.bottom + 8, maxHeight: vh - r.bottom - 8 - M };
 }
 
-function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) => void; shareSave?: SaveFile }) {
+function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) => void; shareSave?: SaveFile; sheet?: boolean }) {
   const { user, notify, view, go } = p;
   const [name, setName] = useProfileName(user, notify);
   const [pos, setPos] = useState(() => place(p.anchor));
@@ -645,11 +659,15 @@ function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) 
       if (!box.current?.contains(t) && !p.anchor?.contains(t) && document.contains(t)) close.current();
     };
     window.addEventListener("resize", onResize); document.addEventListener("keydown", onKey); document.addEventListener("mousedown", onDown);
+    // As a sheet, the page behind stays put
+    const prev = document.body.style.overflow;
+    if (p.sheet) document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("resize", onResize); document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onDown);
+      document.body.style.overflow = prev;
       opener.current?.focus?.();
     };
-  }, [p.anchor]);
+  }, [p.anchor, p.sheet]);
   // Each page starts at its first control
   useEffect(() => { box.current?.querySelector<HTMLElement>(".dback, .drow2")?.focus(); }, [view]);
 
@@ -702,6 +720,15 @@ function Drill(p: SaveListProps & { isAdmin: boolean; view: View; go: (v: View) 
   </>;
 
   const wide = view === "import" || view === "errors" || view === "share";
+  if (p.sheet) return (
+    <div className="dscrim">
+      <div ref={box} className="drill dsheet" role="dialog" aria-modal="true" aria-labelledby="acctTitle">
+        <span className="grab" aria-hidden="true" />
+        {content}
+        <button className="dclose" onClick={p.onClose}>Close</button>
+      </div>
+    </div>
+  );
   return (
     <div ref={box} className={"drill" + (wide ? " wide" : "")} role="dialog" aria-modal="false" aria-labelledby="acctTitle" style={pos}>
       {content}

@@ -792,3 +792,14 @@ a.wl:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radiu
   thead tr{display:none}
   .tablebox{overflow-x:clip}
 }
+/* ---------- Phones & tablets: the account menu as a bottom sheet ---------- */
+.dscrim{position:fixed;inset:0;z-index:90;background:rgba(5,8,20,.55);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s ease-out}
+.drill.dsheet{position:relative;width:min(560px,100%);max-height:86vh;border-radius:18px 18px 0 0;border-bottom:0;
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px));animation:sheetUp .2s ease-out}
+.drill.dsheet .grab{align-self:center;margin:2px 0 6px}
+.drill.dsheet .drow2{padding:12px 10px;font-size:1rem}
+.drill.dsheet .dbody{overscroll-behavior:contain}
+.dclose{margin:6px 4px 0;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:600 .95rem var(--body);cursor:pointer}
+.dclose:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.dscrim,.drill.dsheet{animation:none}}
+.rmenu.up{top:auto;bottom:calc(100% + 4px)}
