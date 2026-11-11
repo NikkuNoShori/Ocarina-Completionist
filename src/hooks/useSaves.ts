@@ -13,11 +13,24 @@ function loadGuest(lists: ChecklistList[]): Progress {
   return Object.fromEntries(lists.map(L => [L.id, {
     got: new Set(ls.get<number[]>(guestKey(L.id, "got"), [])),
     O: ls.get<Record<number, RowEdit>>(guestKey(L.id, "edits"), {}) ?? {},
+    T: ls.get<Record<number, string>>(guestKey(L.id, "seen"), {}) ?? {},
   }]));
 }
 function saveGuest(listId: string, st: ListState) {
   ls.set(guestKey(listId, "got"), [...st.got]);
   ls.set(guestKey(listId, "edits"), st.O);
+  ls.set(guestKey(listId, "seen"), st.T ?? {});
+}
+
+/** Stamp the rows whose edits changed between two states, and drop stamps for edits that are gone. */
+function stampEdits(before: ListState, after: ListState, at: string): ListState {
+  const T = { ...(after.T ?? {}) };
+  new Set([...Object.keys(before.O), ...Object.keys(after.O)]).forEach(k => {
+    const n = +k;
+    if (!after.O[n]) delete T[n];
+    else if (JSON.stringify(before.O[n] ?? null) !== JSON.stringify(after.O[n])) T[n] = at;
+  });
+  return { ...after, T };
 }
 export const hasGuestData = (lists: ChecklistList[]) =>
   lists.some(L => ls.get<number[]>(guestKey(L.id, "got"), []).length || Object.keys(ls.get(guestKey(L.id, "edits"), {}) ?? {}).length);
@@ -74,12 +87,16 @@ export function useSaves(user: User | null, lists: ChecklistList[] | null, notif
     if (!saveId) { setProgress(blank(lists)); return; }
     const [p, e] = await Promise.all([
       sb.from("save_progress").select("list_id,n").eq("save_id", saveId),
-      sb.from("save_edits").select("list_id,n,changes").eq("save_id", saveId),
+      sb.from("save_edits").select("list_id,n,changes,updated_at").eq("save_id", saveId),
     ]);
     if (p.error || e.error) { notify.error("load progress", p.error ?? e.error, "Couldn't load this save file's progress"); return; }
     const next = blank(lists);
     (p.data ?? []).forEach(r => next[r.list_id]?.got.add(r.n));
-    (e.data ?? []).forEach(r => { if (next[r.list_id]) next[r.list_id].O[r.n] = r.changes; });
+    (e.data ?? []).forEach(r => {
+      const st = next[r.list_id]; if (!st) return;
+      st.O[r.n] = r.changes;
+      (st.T ??= {})[r.n] = r.updated_at;
+    });
     setProgress(next);
   }, [lists, notify]);
 
@@ -166,11 +183,12 @@ export function useSaves(user: User | null, lists: ChecklistList[] | null, notif
   }, [user, activeId, canEdit, notify]);
 
   /** Save the result of an edit session (only the differences are written). Returns true on success. */
-  const commit = useCallback(async (listId: string, before: ListState, after: ListState): Promise<boolean> => {
+  const commit = useCallback(async (listId: string, before: ListState, afterIn: ListState): Promise<boolean> => {
+    const now = new Date().toISOString();
+    const after = stampEdits(before, afterIn, now);
     setProgress(p => ({ ...p, [listId]: after }));
     if (!user) { saveGuest(listId, after); return true; }
     if (!activeId) { notify.info("No save file selected."); return false; }
-    const now = new Date().toISOString();
     const ups: object[] = [], dels: number[] = [];
     new Set([...Object.keys(before.O), ...Object.keys(after.O)]).forEach(k => {
       const n = +k;
@@ -188,17 +206,42 @@ export function useSaves(user: User | null, lists: ChecklistList[] | null, notif
     return true;
   }, [user, activeId, loadProgress, notify]);
 
+  /**
+   * Settle rows whose shared version changed after this save edited them.
+   * `useShared`: drop this save's edit so the row shows the shared version.
+   * `keep`: keep the edit and mark it reviewed as of `at` (so the notice goes away until the next update).
+   */
+  const resolveUpdates = useCallback(async (listId: string, st: ListState, useShared: number[], keep: { n: number; at: string }[]): Promise<boolean> => {
+    if (user && (!activeId || !canEdit)) { notify.info("This save file is view only."); return false; }
+    const O = { ...st.O }, T = { ...(st.T ?? {}) };
+    useShared.forEach(n => { delete O[n]; delete T[n]; });
+    keep.forEach(k => { T[k.n] = k.at; });
+    const next: ListState = { ...st, O, T };
+    setProgress(p => ({ ...p, [listId]: { ...(p[listId] ?? st), O, T } }));
+    if (!user) { saveGuest(listId, next); return true; }
+    const jobs = [];
+    if (useShared.length) jobs.push(sb.from("save_edits").delete().eq("save_id", activeId).eq("list_id", listId).in("n", useShared));
+    const ups = keep.filter(k => st.O[k.n]).map(k => ({ save_id: activeId, list_id: listId, n: k.n, changes: st.O[k.n], updated_at: k.at }));
+    if (ups.length) jobs.push(sb.from("save_edits").upsert(ups));
+    const bad = (await Promise.all(jobs)).find(r => r.error);
+    if (bad) { notify.error("resolve updates", bad.error, "Couldn't save your choice"); recheck(bad.error); await loadProgress(activeId); return false; }
+    return true;
+  }, [user, activeId, canEdit, loadProgress, notify]);
+
   /** Copy this browser's guest progress into the active save, then clear it. */
   const copyGuest = useCallback(async () => {
     if (!lists || !activeId) return;
     const prog: object[] = [], edits: object[] = [];
     lists.forEach(L => {
       ls.get<number[]>(guestKey(L.id, "got"), []).forEach(n => prog.push({ save_id: activeId, list_id: L.id, n }));
-      Object.entries(ls.get<Record<string, RowEdit>>(guestKey(L.id, "edits"), {}) ?? {}).forEach(([n, c]) => edits.push({ save_id: activeId, list_id: L.id, n: +n, changes: c }));
+      // Keep when each edit was made, so a shared row updated since still gets flagged
+      const seen = ls.get<Record<string, string>>(guestKey(L.id, "seen"), {}) ?? {};
+      Object.entries(ls.get<Record<string, RowEdit>>(guestKey(L.id, "edits"), {}) ?? {}).forEach(([n, c]) =>
+        edits.push({ save_id: activeId, list_id: L.id, n: +n, changes: c, updated_at: seen[n] ?? "1970-01-01T00:00:00Z" }));
     });
     if (prog.length) { const { error } = await sb.from("save_progress").upsert(prog); if (error) return notify.error("copy guest progress", error, "Couldn't copy your checkmarks"); }
     if (edits.length) { const { error } = await sb.from("save_edits").upsert(edits); if (error) return notify.error("copy guest edits", error, "Couldn't copy your edits"); }
-    lists.forEach(L => { ls.del(guestKey(L.id, "got")); ls.del(guestKey(L.id, "edits")); });
+    lists.forEach(L => { ls.del(guestKey(L.id, "got")); ls.del(guestKey(L.id, "edits")); ls.del(guestKey(L.id, "seen")); });
     await loadProgress(activeId);
     notify.ok(`Copied ${prog.length} checkmarks into “${active?.name ?? "your save"}”.`);
   }, [lists, activeId, active, loadProgress, notify]);
@@ -214,7 +257,7 @@ export function useSaves(user: User | null, lists: ChecklistList[] | null, notif
 
   return {
     saves, active, activeId, setActiveId, progress, setProgress, loading, canEdit,
-    loadSaves, setCollected, commit, copyGuest, importCollected,
+    loadSaves, setCollected, commit, resolveUpdates, copyGuest, importCollected,
     pauseLive: (on: boolean) => { pauseLive.current = on; },
   };
 }

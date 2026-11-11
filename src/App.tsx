@@ -23,6 +23,7 @@ import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
 import { ProgressSummary } from "./components/ProgressSummary";
 import { Modal, PanelIcon } from "./components/ui";
+import { PublishPreview, ReviewUpdates } from "./components/RowUpdates";
 
 const wide = () => window.innerWidth >= 900;
 
@@ -44,9 +45,13 @@ export default function App() {
   const setTfilt = (time: TimeFilter) => updatePrefs({ time });
   const setHideDone = (b: boolean) => updatePrefs({ hideDone: b });
   const setShowGuides = (b: boolean) => updatePrefs({ showGuides: b });
-  const [search, setSearch] = useState("");
+  // Search text and the phone area picker are remembered for the list they were set on, so they survive
+  // the page reloading (phones often reload a tab you switched away from). Switching lists clears them.
+  const FIND_KEY = "oot-find-v1";
+  const savedFind = (() => { const f = ls.get<{ list?: string; search?: string; area?: string } | null>(FIND_KEY, null); return f && f.list === window.location.hash.slice(1) ? f : null; })();
+  const [search, setSearch] = useState(() => (typeof savedFind?.search === "string" ? savedFind.search : ""));
   // Phones pick an area from a dropdown instead of typing a search
-  const [area, setArea] = useState("");
+  const [area, setArea] = useState(() => (typeof savedFind?.area === "string" ? savedFind.area : ""));
   const phone = useMedia("(max-width:640px)");
   // Below desktop width the lists open as a bottom sheet from the title in a sticky top bar
   const compact = useMedia("(max-width:899px)");
@@ -132,6 +137,7 @@ export default function App() {
     return [...m].map(([name, rows]) => ({ name, count: frac(rows) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool.length, filt, tfilt, aIdx, state]);
+  useEffect(() => { if (list) ls.set(FIND_KEY, { list: list.id, search, area }); }, [list, search, area]);
   // The text search only exists on wider screens, and the area picker only on phones
   useEffect(() => { if (phone) setSearch(""); else setArea(""); }, [phone]);
 
@@ -152,6 +158,22 @@ export default function App() {
     setDraft({ ...draft, after: { ...draft.after, O } });
   };
   const onUndo = (n: number) => { if (!draft) return; const O = { ...draft.after.O }; delete O[n]; setDraft({ ...draft, after: { ...draft.after, O } }); };
+
+  // Rows you edited that were updated in the shared list since: compare and choose
+  const [review, setReview] = useState<number[] | null | false>(false);
+  const staleCount = all.filter(r => r.stale).length;
+  useEffect(() => { setReview(false); }, [list?.id]);
+  // Close the comparison once everything in it is settled
+  useEffect(() => {
+    if (review !== false && !all.some(r => r.stale && (!review || review.includes(r.n)))) setReview(false);
+  }, [all, review]);
+  const resolve = async (useShared: number[], keep: { n: number; at: string }[]) => {
+    if (!list) return;
+    const ok = await saves.resolveUpdates(list.id, saves.progress[list.id] ?? emptyState(), useShared, keep);
+    if (!ok) return;
+    if (useShared.length && !keep.length) notify.ok(useShared.length === 1 ? `Row #${useShared[0]} now shows the update.` : `${useShared.length} rows now show the update.`);
+    else if (keep.length && !useShared.length) notify.ok(keep.length === 1 ? `Kept your version of row #${keep[0].n}.` : `Kept your version of ${keep.length} rows.`);
+  };
 
   const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
   const cancelEdit = () => { setDraft(null); notify.info("Edits canceled. Nothing was saved."); };
@@ -177,7 +199,15 @@ export default function App() {
     sb.rpc("am_i_admin").then(({ data, error }) => { if (!error) setIsAdmin(!!data); });
   }, [user]);
   const editCount = list ? Object.keys(saves.progress[list.id]?.O ?? {}).length : 0;
+  // Publishing opens a preview of every change first
+  const [pubOpen, setPubOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const publishEdits = async () => {
+    if (!list || !saves.activeId || publishing) return;
+    setPublishing(true);
+    try { await doPublish(); } finally { setPublishing(false); setPubOpen(false); }
+  };
+  const doPublish = async () => {
     if (!list || !saves.activeId) return;
     const saveId = saves.activeId, listId = list.id, since = new Date(Date.now() - 60_000).toISOString();
     const before = saves.progress[list.id]?.O ?? {};
@@ -237,7 +267,7 @@ export default function App() {
     hideDone={hideDone} setHideDone={setHideDone} editing={editing}
     showGuides={prefs.showGuides} setShowGuides={setShowGuides}
     canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
-    publishCount={isAdmin && user ? editCount : 0} onPublish={publishEdits}
+    publishCount={isAdmin && user ? editCount : 0} onPublish={() => setPubOpen(true)}
     order={order} setOrder={setOrder} sortable={list.sortable} hasItemSort={!!list.item_groups} />} /> : null;
 
   return <>
@@ -298,10 +328,14 @@ export default function App() {
         editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty} onReset={resetAll}
         phone={phone} menu={phone ? null : listMenu}
       />}
+      {list && !editing && staleCount > 0 && <div className="upbanner" role="status">
+        <span><b>{staleCount === 1 ? "1 row you edited was" : `${staleCount} rows you edited were`} updated</b> in the shared list. You're still seeing your version.</span>
+        <button className="primary sm" onClick={() => setReview(null)}>Compare</button>
+      </div>}
       {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
       {list ? <ChecklistTable list={list} rows={shown} all={all} got={state.got} order={order} editing={editing} readOnly={readOnly}
-        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} showGuides={prefs.showGuides}
+        onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} onReview={n => setReview([n])} showGuides={prefs.showGuides}
         emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} matches these filters.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
       </>}
@@ -328,6 +362,10 @@ export default function App() {
       settings={settings} setSettings={setSettings}
       lists={lists} curId={firstId} saves={saves.saves} active={active} progress={saves.progress} activeId={saves.activeId} onSwitch={id => saves.setActiveId(id)} reloadSaves={saves.loadSaves}
       guestData={hasGuestData(lists)} onCopyGuest={saves.copyGuest} onImport={saves.importCollected} />}
+    {list && <PublishPreview open={pubOpen} onClose={() => setPubOpen(false)} list={list} st={saves.progress[list.id] ?? emptyState()}
+      saveName={active?.name} busy={publishing} onPublish={publishEdits} />}
+    {list && !editing && <ReviewUpdates open={review !== false} onClose={() => setReview(false)} list={list} st={state}
+      only={review || null} readOnly={readOnly} onResolve={resolve} />}
     {/* Opened a playthrough someone just shared: show where you are and how far along it is */}
     <Modal open={!!joined} onClose={() => setJoinedId(null)} title="You're in" labelId="joinTitle" className="acctpanel" center>
       {joined && <div className="aform welcome">

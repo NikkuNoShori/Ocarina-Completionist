@@ -12,9 +12,11 @@ const linkName = (label: string) => label.replace(/\s*↗\s*$/, "");
 const AGE_TEXT: Record<string, string> = { Either: "Either age", Both: "Both ages" };
 const AGE_TIP: Record<string, string> = { Either: "Child or adult Link can do it", Both: "Needs a visit as child and as adult" };
 
-export function ChecklistTable({ list, rows, all, got, order, editing, readOnly, onToggle, onEdit, onUndo, emptyText, showGuides = true }: {
+export function ChecklistTable({ list, rows, all, got, order, editing, readOnly, onToggle, onEdit, onUndo, onReview, emptyText, showGuides = true }: {
   list: ChecklistList; rows: EffRow[]; all: EffRow[]; got: Set<number>; order: Order; editing: boolean; readOnly: boolean;
   onToggle: (n: number, on: boolean) => void; onEdit: (n: number, field: keyof RowEdit, value: string) => void; onUndo: (n: number) => void;
+  /** Open the comparison for a row you edited that has since been updated */
+  onReview?: (n: number) => void;
   emptyText: string; showGuides?: boolean;
 }) {
   const byItem = order === "item" && !!list.item_groups;
@@ -53,6 +55,9 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                       <textarea key={r.l} className="ed" id={`${P}-l${r.n}`} aria-label={`Location for #${r.n}`} defaultValue={r.l} onBlur={e => e.target.value.trim() !== r.l && onEdit(r.n, "l", e.target.value.trim())} />
                     </> : <>{byItem && <div className="rowarea">{r.a}</div>}{r.l}</>}
                     {r.edited && <><span className="edited">Edited</span>{editing && <button className="linkbtn undo" onClick={() => onUndo(r.n)}>Undo</button>}</>}
+                    {r.stale && !editing && onReview && <button className="upchip" onClick={() => onReview(r.n)} title="The shared list changed after you edited this row">
+                      Updated · compare
+                    </button>}
                   </td>
                   <td className="lvc">
                     {(editing || r.lv) && <span className="clab" aria-hidden="true">Floor</span>}

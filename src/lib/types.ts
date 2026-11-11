@@ -21,6 +21,8 @@ export interface ItemRow {
   adult_first: boolean;
   item_group: string | null;
   photo_links: PhotoLink[];
+  /** When an admin last changed this row (null: unchanged since launch) */
+  updated_at?: string | null;
 }
 
 export interface ChecklistList {
@@ -46,13 +48,19 @@ export interface SourceNote { id: number; list_id: string | null; note: string }
 export interface RowEdit { a?: string; l?: string; lv?: string; age?: string; time?: string; note?: string; af?: "1" | "0" }
 
 /** Progress for one list: collected numbers and row edits. */
-export interface ListState { got: Set<number>; O: Record<number, RowEdit> }
+export interface ListState {
+  got: Set<number>; O: Record<number, RowEdit>;
+  /** When each row edit was last made or reviewed (ISO time), to spot shared rows updated since */
+  T?: Record<number, string>;
+}
 export type Progress = Record<string, ListState>;
 
 /** A reference row with this save's edits applied. */
 export interface EffRow {
   n: number; a: string; l: string; lv: string; age: Age; time: Time; note: string; af: boolean;
   group: string | null; links: PhotoLink[]; edited: boolean;
+  /** Edited here, and the shared row has changed since: worth a look */
+  stale: boolean;
 }
 
 export interface SaveFile { id: string; name: string; owner_id: string; updated_at: string; role: Role; owner_email?: string; /** checkmarks in this save */ done?: number }

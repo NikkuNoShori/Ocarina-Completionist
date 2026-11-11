@@ -7,4 +7,4 @@ export const ls = {
   del(k: string) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
 
-export const guestKey = (listId: string, k: "got" | "edits") => `oot-guest-${listId}-${k}`;
+export const guestKey = (listId: string, k: "got" | "edits" | "seen") => `oot-guest-${listId}-${k}`;

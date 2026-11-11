@@ -729,3 +729,28 @@ tr.done .gchip{opacity:.85}
 .f-edit .espacer{flex:1}
 .resetbtn{background:transparent!important;color:var(--adult)!important;border-color:color-mix(in srgb,var(--adult) 50%,var(--line))!important}
 @media (max-width:640px){.bar .f-edit{grid-column:1/-1;justify-content:stretch}}
+
+/* Updated rows: a player's edited row changed in the shared list since */
+.upchip{display:inline-block;margin-left:6px;font:700 .72rem var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--adult);background:var(--adult-bg);border:1px solid var(--adult);border-radius:999px;padding:2px 9px;cursor:pointer;white-space:nowrap}
+.upchip:hover{filter:brightness(1.05)}
+.upchip:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.upbanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 0;padding:10px 12px;border:1px solid var(--adult);background:var(--adult-bg);border-radius:8px;font-size:.95rem}
+.upbanner b{color:var(--adult)}
+
+/* Before/after comparisons (publish preview, reviewing updates) */
+.panel.diffpanel{width:min(640px,100%);max-height:85vh}
+.diffpanel .dnotes{margin:10px 0 4px;color:var(--muted);font-size:.9rem}
+.diffpanel .dwarn{color:var(--fg)}
+.dlist{display:grid;gap:12px;margin-top:14px}
+.ditem{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.drowhead{display:flex;gap:8px;align-items:baseline;font-size:.92rem;margin-bottom:8px}
+.dnum{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:700}
+.difft{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed;font-size:.9rem}
+.difft th,.difft td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left;overflow-wrap:anywhere}
+.difft thead th{font:700 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:2px solid var(--line)}
+.difft tbody th{font-weight:700;width:26%;color:var(--muted)}
+.difft tr:last-child th,.difft tr:last-child td{border-bottom:0}
+.difft .dold{color:var(--muted)}
+.difft .dnew{color:var(--fg);font-weight:500}
+.dactions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:14px}
+.dactions.row{margin-top:10px}

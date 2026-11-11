@@ -88,8 +88,8 @@ export function ListMenuItems(p: {
       <input type="checkbox" checked={p.showGuides} onChange={e => p.setShowGuides(e.target.checked)} /> Show guide links
     </label>
     {p.canEdit && !p.editing && <button className="kitem" role="menuitem" onClick={() => { close(); p.onStartEdit(); }}>Edit details</button>}
-    {p.publishCount > 0 && !p.editing && <ConfirmButton className="kitem kpub" label={`Publish ${p.publishCount} edit${p.publishCount === 1 ? "" : "s"} to everyone`}
-      confirmLabel="Tap again: updates the list for all players" onConfirm={() => { close(); p.onPublish(); }} />}
+    {p.publishCount > 0 && !p.editing && <button className="kitem kpub" role="menuitem" aria-haspopup="dialog" onClick={() => { close(); p.onPublish(); }}>
+      Review &amp; publish {p.publishCount} edit{p.publishCount === 1 ? "" : "s"}…</button>}
     <button className="kitem" role="menuitem" onClick={() => { close(); p.onCsv(); }}>Download this list (CSV)</button>
     <button className="kitem" role="menuitem" onClick={() => { close(); p.onXlsx(); }}>Download all lists (Excel)</button>
     {p.sortable && (
