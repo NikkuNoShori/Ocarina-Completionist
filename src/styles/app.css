@@ -754,3 +754,9 @@ tr.done .gchip{opacity:.85}
 .difft .dnew{color:var(--fg);font-weight:500}
 .dactions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:14px}
 .dactions.row{margin-top:10px}
+.upmsg{margin:0;flex:1 1 320px;line-height:1.45}
+.upmsg a{color:var(--adult);font-weight:700}
+.changes .cday h2{font-family:var(--display);font-size:1.15rem;color:var(--gold);margin:22px 0 6px}
+.changes .clist h3{font:700 .8rem var(--body);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 0}
+.changes .clist h3 a{color:var(--muted)}
+.changes{max-width:760px;padding-bottom:24px}

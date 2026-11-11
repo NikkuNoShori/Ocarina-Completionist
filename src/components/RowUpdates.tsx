@@ -7,7 +7,7 @@ const when = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
 
 /** One row's changed fields as a small two-column comparison. */
-function Diff({ list, r, o, left, right }: { list: ChecklistList; r: ItemRow; o: RowEdit; left: string; right: string }) {
+export function Diff({ list, r, o, left, right }: { list: ChecklistList; r: ItemRow; o: RowEdit; left: string; right: string }) {
   const d = fieldDiff(r, o);
   return (
     <table className="difft">
@@ -25,8 +25,13 @@ function Diff({ list, r, o, left, right }: { list: ChecklistList; r: ItemRow; o:
   );
 }
 
-const RowHead = ({ r }: { r: ItemRow }) => (
+export const RowHead = ({ r }: { r: ItemRow }) => (
   <div className="drowhead"><span className="dnum">#{r.n}</span><span><b>{r.area}</b> · {r.location}</span></div>
+);
+
+/** What players are told when an update reaches rows they edited. */
+export const UpdateMessage = () => (
+  <p className="upmsg">We've updated the guide with new information, including some spots you changed yourself. Take a look and approve anything you'd like added to your checklist. You can see every update anytime on the <a href="#changes">Guide updates</a> page.</p>
 );
 
 /** Admins: every change a publish will make to the shared list, before it goes out. */
@@ -72,26 +77,26 @@ export function ReviewUpdates({ open, onClose, list, st, only, readOnly, onResol
     const now = Date.now(), up = Date.parse(r.updated_at ?? "") || 0;
     return new Date(Math.max(now, up + 1)).toISOString();
   };
-  const title = rows.length === 1 ? `Row #${rows[0].n} was updated` : `${rows.length} rows you edited were updated`;
+  const title = rows.length === 1 ? `New info for #${rows[0].n}` : `New info for ${rows.length} spots you changed`;
   return (
     <Modal open={open && rows.length > 0} onClose={onClose} title={title} labelId="revTitle" className="diffpanel" center>
-      <p>The shared {list.name} list changed after you edited {rows.length === 1 ? "this row" : "these rows"}. You're still seeing your version. Compare them and pick one.</p>
-      {readOnly && <p className="dwarn">This save file is view only, so only its owner or an editor can choose.</p>}
+      <p>{rows.length === 1 ? "This spot has" : "These spots have"} new information since you changed {rows.length === 1 ? "it" : "them"}. Your checklist keeps your version until you approve. See every update on the <a href="#changes" onClick={onClose}>Guide updates</a> page.</p>
+      {readOnly && <p className="dwarn">This playthrough is view only, so only its owner or someone who can edit it can approve.</p>}
       <div className="dlist">
         {rows.map(r => (
           <section key={r.n} className="ditem">
             <RowHead r={r} />
-            <Diff list={list} r={r} o={st.O[r.n]} left={`Updated ${when(r.updated_at)}`} right="Your version" />
+            <Diff list={list} r={r} o={st.O[r.n]} left={`New info · ${when(r.updated_at)}`} right="Your version" />
             {!readOnly && <div className="dactions row">
               <button className="editbtn" onClick={() => onResolve([], [{ n: r.n, at: keepAt(r) }])}>Keep mine</button>
-              <button className="primary sm" onClick={() => onResolve([r.n], [])}>Use the update</button>
+              <button className="primary sm" onClick={() => onResolve([r.n], [])}>Approve</button>
             </div>}
           </section>
         ))}
       </div>
       {!readOnly && rows.length > 1 && <div className="dactions">
         <button className="editbtn" onClick={() => onResolve([], rows.map(r => ({ n: r.n, at: keepAt(r) })))}>Keep all mine</button>
-        <button className="primary" onClick={() => onResolve(rows.map(r => r.n), [])}>Use all updates</button>
+        <button className="primary" onClick={() => onResolve(rows.map(r => r.n), [])}>Approve all</button>
       </div>}
     </Modal>
   );

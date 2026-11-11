@@ -23,7 +23,8 @@ import { useNotify } from "./components/Notify";
 import { SourcesPanel } from "./components/SourcesPanel";
 import { ProgressSummary } from "./components/ProgressSummary";
 import { Modal, PanelIcon } from "./components/ui";
-import { PublishPreview, ReviewUpdates } from "./components/RowUpdates";
+import { PublishPreview, ReviewUpdates, UpdateMessage } from "./components/RowUpdates";
+import { GuideChanges } from "./components/GuideChanges";
 
 const wide = () => window.innerWidth >= 900;
 
@@ -35,7 +36,7 @@ export default function App() {
   const [settings, setSettings] = useSettings(user, saves.activeId);
   // "Alex shared … with you" notices; Open switches to that save file (reloading the list first in case it's new)
   const [joinedId, setJoinedId] = useState<string | null>(null);
-  useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); setJoinedId(id); if (legal) location.hash = ""; }, welcoming);
+  useNotifications(user, notify, async id => { await saves.loadSaves(); saves.setActiveId(id); setJoinedId(id); if (page) location.hash = ""; }, welcoming);
 
   const [curId, setCurId] = useState(() => window.location.hash.slice(1));
   // Filters are remembered across lists and visits (src/lib/filters.ts)
@@ -70,7 +71,9 @@ export default function App() {
   const lists = ref?.lists ?? [];
   // #privacy and #terms are pages too; anything else is a checklist id
   const legal: LegalId | null = curId === "privacy" || curId === "terms" ? curId : null;
-  const list = legal ? undefined : lists.find(L => L.id === curId) ?? lists[0];
+  // #changes: the history of updates published to the guide
+  const page: LegalId | "changes" | null = legal ?? (curId === "changes" ? "changes" : null);
+  const list = page ? undefined : lists.find(L => L.id === curId) ?? lists[0];
   const firstId = list?.id ?? lists[0]?.id ?? "";
   const editing = !!draft;
 
@@ -171,8 +174,8 @@ export default function App() {
     if (!list) return;
     const ok = await saves.resolveUpdates(list.id, saves.progress[list.id] ?? emptyState(), useShared, keep);
     if (!ok) return;
-    if (useShared.length && !keep.length) notify.ok(useShared.length === 1 ? `Row #${useShared[0]} now shows the update.` : `${useShared.length} rows now show the update.`);
-    else if (keep.length && !useShared.length) notify.ok(keep.length === 1 ? `Kept your version of row #${keep[0].n}.` : `Kept your version of ${keep.length} rows.`);
+    if (useShared.length && !keep.length) notify.ok(useShared.length === 1 ? `Approved. #${useShared[0]} now has the new info.` : `Approved. ${useShared.length} spots now have the new info.`);
+    else if (keep.length && !useShared.length) notify.ok(keep.length === 1 ? `Kept your version of #${keep[0].n}.` : `Kept your version of ${keep.length} spots.`);
   };
 
   const startEdit = () => { if (!list) return; const cur = saves.progress[list.id] ?? emptyState(); setDraft({ before: cloneState(cur), after: cloneState(cur) }); };
@@ -263,7 +266,7 @@ export default function App() {
   const overall = completion(lists, liveAll);
   const joined = joinedId && saves.activeId === joinedId ? active : null;
 
-  const listMenu = list && !legal ? <MoreMenu items={close => <ListMenuItems close={close}
+  const listMenu = list && !page ? <MoreMenu items={close => <ListMenuItems close={close}
     hideDone={hideDone} setHideDone={setHideDone} editing={editing}
     showGuides={prefs.showGuides} setShowGuides={setShowGuides}
     canEdit={saves.canEdit} onStartEdit={startEdit} onCsv={onCsv} onXlsx={onXlsx}
@@ -273,7 +276,7 @@ export default function App() {
   return <>
     <div className="wrap">
       {(() => {
-        const title = legal ? LEGAL_TITLES[legal] : list ? list.name : "Loading";
+        const title = legal ? LEGAL_TITLES[legal] : page === "changes" ? "Guide updates" : list ? list.name : "Loading";
         const got = list ? countGot(pool, state.got) : 0, pc = pool.length ? Math.round(got / pool.length * 100) : 0;
         const meta = list && <p className="tmeta">
           <span className="tstat" title="On this list, with the age and time filters applied"><span className="tnum"><b>{got}</b> / {pool.length}</span> on this list
@@ -313,7 +316,7 @@ export default function App() {
         );
       })()}
       {list && <p className="sub">{list.sub}</p>}
-      {legal ? <LegalPage id={legal} /> : <>
+      {legal ? <LegalPage id={legal} /> : page === "changes" ? <GuideChanges lists={lists} /> : <>
       <div className="overall">
         {user && active?.role === "viewer" && <span className="ro">View only</span>}
         {saving && <span className="ro">Saving…</span>}
@@ -329,8 +332,8 @@ export default function App() {
         phone={phone} menu={phone ? null : listMenu}
       />}
       {list && !editing && staleCount > 0 && <div className="upbanner" role="status">
-        <span><b>{staleCount === 1 ? "1 row you edited was" : `${staleCount} rows you edited were`} updated</b> in the shared list. You're still seeing your version.</span>
-        <button className="primary sm" onClick={() => setReview(null)}>Compare</button>
+        <UpdateMessage />
+        <button className="primary sm" onClick={() => setReview(null)}>Review {staleCount} update{staleCount === 1 ? "" : "s"}</button>
       </div>}
       {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
@@ -341,7 +344,7 @@ export default function App() {
       </>}
 
       {list && <p className="foot"><span dangerouslySetInnerHTML={{ __html: list.foot }} /> Tap the <b>?</b> button for all sources.</p>}
-      <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
+      <p className="foot">Unofficial fan project, not affiliated with Nintendo. <a href="#changes">Guide updates</a> · <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
     </div>
 
     {panelOpen && lists.length > 0 && <ListsDrawer lists={lists} progress={liveAll} overallPct={overall.pct} curId={list?.id ?? ""} editing={editing}
