@@ -47,7 +47,7 @@ export function PublishPreview({ open, onClose, list, st, saveName, busy, onPubl
         {rows.map(r => (
           <section key={r.n} className="ditem">
             <RowHead r={r} />
-            <Diff list={list} r={r} o={st.O[r.n]} left="Now" right="After publish" />
+            <Diff list={list} r={r} o={st.O[r.n]} left="Before" right="After" />
           </section>
         ))}
       </div>
