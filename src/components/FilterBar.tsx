@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ConfirmButton } from "./ui";
+import { AreaPicker } from "./AreaPicker";
 import type { AgeFilter, Order, TimeFilter } from "../lib/types";
 
 const AGE_LABEL: Record<AgeFilter, string> = { all: "All ages", Child: "Child", Adult: "Adult", travel: "Time travel" };
@@ -13,7 +14,7 @@ export function FilterBar(p: {
   editing: boolean; onDone: () => void; onCancel: () => void;
   /** Unsaved edits exist: Cancel then needs a second tap */
   dirty?: boolean; onReset: () => void;
-  area: string; setArea: (a: string) => void; areaOpts: { name: string; count: string }[]; areaTotal: string;
+  areas: string[]; setAreas: (a: string[]) => void; areaOpts: { name: string; count: string }[]; areaTotal: string;
   /** Phones get dropdowns (age, time, area), and the ⋮ moves up to the header */
   phone: boolean; menu: ReactNode;
 }) {
@@ -41,13 +42,9 @@ export function FilterBar(p: {
           {(Object.keys(TIME_LABEL) as TimeFilter[]).map(t => <option key={t} value={t}>{TIME_LABEL[t]} ({p.timeCounts[t]})</option>)}
         </select>
       </label>
-      <label className="fld f-area"><span className="flab">Area</span>
-        <select className="sel" value={p.area} onChange={e => p.setArea(e.target.value)}>
-          <option value="">All areas ({p.areaTotal})</option>
-          {p.area && !p.areaOpts.some(o => o.name === p.area) && <option value={p.area}>{p.area} (0)</option>}
-          {p.areaOpts.map(o => <option key={o.name} value={o.name}>{o.name} ({o.count})</option>)}
-        </select>
-      </label>
+      <div className="fld f-area"><span className="flab" aria-hidden="true">Area</span>
+        <AreaPicker value={p.areas} onChange={p.setAreas} options={p.areaOpts} total={p.areaTotal} />
+      </div>
       {!p.phone && (
         <label className="fld f-search search"><span className="flab">Search</span>
           <input className="sel" type="search" placeholder="Location or item…" autoComplete="off"

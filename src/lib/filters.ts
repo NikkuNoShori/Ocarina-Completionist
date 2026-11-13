@@ -7,13 +7,13 @@ import type { AgeFilter, ChecklistList, Order, TimeFilter } from "./types";
  * Age, time of day and "hide collected" apply to every list; the sort is kept per list, since
  * not every list can sort the same ways. Search stays per visit and clears when you switch lists.
  */
-export type FilterPrefs = { age: AgeFilter; time: TimeFilter; area: string; hideDone: boolean; showGuides: boolean; order: Record<string, Order> };
+export type FilterPrefs = { age: AgeFilter; time: TimeFilter; areas: string[]; hideDone: boolean; showGuides: boolean; order: Record<string, Order> };
 
 const KEY = "oot-filters-v1";
 const AGES: AgeFilter[] = ["all", "Child", "Adult", "travel"];
 const TIMES: TimeFilter[] = ["all", "Day", "Night"];
 const ORDERS: Order[] = ["area", "story", "item"];
-const DEFAULTS: FilterPrefs = { age: "all", time: "all", area: "", hideDone: false, showGuides: true, order: {} };
+const DEFAULTS: FilterPrefs = { age: "all", time: "all", areas: [], hideDone: false, showGuides: true, order: {} };
 
 /** Anything stored by an older build, another tab or a hand edit is checked before it is used. */
 function read(): FilterPrefs {
@@ -25,7 +25,9 @@ function read(): FilterPrefs {
   return {
     age: AGES.includes(v.age as AgeFilter) ? (v.age as AgeFilter) : "all",
     time: TIMES.includes(v.time as TimeFilter) ? (v.time as TimeFilter) : "all",
-    area: typeof v.area === "string" ? v.area.slice(0, 80) : "",
+    // Older builds stored one area as `area`
+    areas: (Array.isArray(v.areas) ? v.areas : typeof (v as { area?: unknown }).area === "string" && (v as { area: string }).area ? [(v as { area: string }).area] : [])
+      .filter((a): a is string => typeof a === "string").map(a => a.slice(0, 80)).slice(0, 60),
     hideDone: v.hideDone === true,
     showGuides: v.showGuides !== false,
     order,

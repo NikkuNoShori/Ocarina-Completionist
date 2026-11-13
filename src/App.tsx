@@ -52,9 +52,11 @@ export default function App() {
   const FIND_KEY = "oot-find-v1";
   const savedFind = (() => { const f = ls.get<{ list?: string; search?: string } | null>(FIND_KEY, null); return f && f.list === window.location.hash.slice(1) ? f : null; })();
   const [search, setSearch] = useState(() => (typeof savedFind?.search === "string" ? savedFind.search : ""));
-  // The area pick is remembered everywhere (filters.ts), so "Hyrule Field" follows you from list to list
-  const area = prefs.area;
-  const setArea = (a: string) => updatePrefs({ area: a });
+  // The areas picked are remembered everywhere (filters.ts), so "Hyrule Field" follows you from list to list
+  const areas = prefs.areas;
+  const setAreas = (a: string[]) => updatePrefs({ areas: a });
+  const inAreas = (a: string) => !areas.length || areas.includes(a);
+  const areaText = areas.length === 1 ? areas[0] : areas.length === 2 ? areas.join(" or ") : `${areas.length} areas`;
   const phone = useMedia("(max-width:640px)");
   // Below desktop width the lists open as a bottom sheet from the title in a sticky top bar
   const compact = useMedia("(max-width:899px)");
@@ -134,19 +136,20 @@ export default function App() {
     const byItem = order === "item" && list.item_groups;
     const gi = (r: typeof all[number]) => (byItem ? list.item_groups!.indexOf(r.group ?? "") : aIdx[r.a]);
     const sorted = order === "story" ? all : [...all].sort((x, y) => gi(x) - gi(y) || x.n - y.n);
-    return sorted.filter(r => ageOK(r, filt) && timeOK(r, tfilt) && !(hideDone && state.got.has(r.n)) && (!area || r.a === area)
+    return sorted.filter(r => ageOK(r, filt) && timeOK(r, tfilt) && !(hideDone && state.got.has(r.n)) && inAreas(r.a)
       && (!q || (r.a + " " + r.l + " " + r.lv + " " + r.note).toLowerCase().replace(/[’']/g, "").includes(q)));
-  }, [list, all, order, aIdx, filt, tfilt, hideDone, state, q, area]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, all, order, aIdx, filt, tfilt, hideDone, state, q, areas]);
 
   const frac = (rows: typeof all) => `${countGot(rows, state.got)}/${rows.length}`;
   const ageCounts = Object.fromEntries((["all", "Child", "Adult", "travel"] as AgeFilter[]).map(f => [f, frac(all.filter(r => ageOK(r, f) && timeOK(r, tfilt)))])) as Record<AgeFilter, string>;
   const timeCounts = Object.fromEntries((["all", "Day", "Night"] as TimeFilter[]).map(t => [t, frac(all.filter(r => timeOK(r, t) && ageOK(r, filt)))])) as Record<TimeFilter, string>;
   const pool = all.filter(r => ageOK(r, filt) && timeOK(r, tfilt));
-  // Areas in the order the list shows them, with how many you've got in each (age/time filters applied)
+  // Areas A–Z, with how many you've got in each (age/time filters applied)
   const areaOpts = useMemo(() => {
     const m = new Map<string, typeof all>();
-    for (const r of [...pool].sort((x, y) => aIdx[x.a] - aIdx[y.a])) m.set(r.a, [...(m.get(r.a) ?? []), r]);
-    return [...m].map(([name, rows]) => ({ name, count: frac(rows) }));
+    for (const r of pool) m.set(r.a, [...(m.get(r.a) ?? []), r]);
+    return [...m].map(([name, rows]) => ({ name, count: frac(rows) })).sort((a, b) => a.name.localeCompare(b.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool.length, filt, tfilt, aIdx, state]);
   useEffect(() => { if (list) ls.set(FIND_KEY, { list: list.id, search }); }, [list, search]);
@@ -338,7 +341,7 @@ export default function App() {
         filt={filt} setFilt={setFilt} ageCounts={ageCounts}
         tfilt={tfilt} setTfilt={setTfilt} timeCounts={timeCounts}
         search={search} setSearch={setSearch}
-        area={area} setArea={setArea} areaOpts={areaOpts} areaTotal={frac(pool)}
+        areas={areas} setAreas={setAreas} areaOpts={areaOpts} areaTotal={frac(pool)}
         editing={editing} onDone={doneEdit} onCancel={cancelEdit} dirty={dirty} onReset={resetAll}
         phone={phone} menu={phone ? null : listMenu}
       />}
@@ -348,9 +351,9 @@ export default function App() {
       </div>}
       {editing && <div className="editbar">Editing: change the area, location, floor, age, time or requirements on any row. Nothing is saved until you tap Done editing.</div>}
 
-      {list ? <ChecklistTable list={list} rows={shown} all={isAll && area ? all.filter(r => r.a === area) : all} got={state.got} order={order} editing={editing} readOnly={readOnly}
+      {list ? <ChecklistTable list={list} rows={shown} all={isAll && areas.length ? all.filter(r => inAreas(r.a)) : all} got={state.got} order={order} editing={editing} readOnly={readOnly}
         onToggle={onToggle} onEdit={onEdit} onUndo={onUndo} onReview={isAll ? undefined : n => setReview([n])} showGuides={prefs.showGuides}
-        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : area ? `Nothing in ${area} on this list matches these filters. Pick “All areas” or open All checklists.` : "Nothing on this list matches these filters."} />
+        emptyText={search ? `Nothing on this list matches “${search}” with these filters.` : areas.length ? `Nothing in ${areaText} on this list matches these filters. Clear the area filter or open All checklists.` : "Nothing on this list matches these filters."} />
         : <div className="tablebox"><table><tbody><tr className="empty"><td>Loading the checklists…</td></tr></tbody></table></div>}
       </>}
 
