@@ -33,6 +33,10 @@ const TERMS: Record<string, string | null> = {
   "Magic Meter": "Magic Meter", "Double Magic": null, "Spin Attack": "Spin Attack",
   // Masks and trade items
   "Mask of Truth": "Mask of Truth", "Skull Mask": "Skull Mask", "Bunny Hood": "Bunny Hood", "Zelda's Letter": "Zelda's Letter",
+  // Adult trading quest
+  "Cucco Lady": "Anju", "Pocket Egg": "Pocket Egg", "Pocket Cucco": "Pocket Cucco", "Cojiro": "Cojiro", "Odd Mushroom": "Odd Mushroom",
+  "Odd Poultice": null, "Poacher's Saw": "Poacher's Saw", "Broken Goron's Sword": null, "Prescription": "Prescription",
+  "Eyeball Frog": "Eyeball Frog", "Eye Drops": null, "Claim Check": "Claim Check", "Blue Fire": "Blue Fire",
   // Everything else
   "Empty Bottle": "Empty Bottle", "Magic Bean": "Magic Bean", "Bug": "Bug", "Cuccos": "Cucco", "Cucco": "Cucco",
   "Epona": "Epona", "Rupees": "Rupee", "Gold Skulltula tokens": "Gold Skulltula Token",

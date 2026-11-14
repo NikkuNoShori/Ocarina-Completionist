@@ -54,7 +54,11 @@ export function ChecklistTable({ list, rows, all, got, order, editing, readOnly,
                         {(areas.includes(r.a) ? areas : [r.a, ...areas]).map(a => <option key={a} value={a}>{a}</option>)}
                       </select>
                       <textarea key={r.l} className="ed" id={`${P}-l${r.n}`} aria-label={`Location for #${r.n}`} defaultValue={r.l} onBlur={e => e.target.value.trim() !== r.l && onEdit(r.n, "l", e.target.value.trim())} />
-                    </> : <>{r.tag && !byItem && <div className="rowarea rowtag">{r.tag}</div>}{byItem && <div className="rowarea">{r.a}</div>}{linkifyLead(r.l)}</>}
+                    </> : <>{r.tag && !byItem && <div className="rowarea rowtag">{r.tag}</div>}{byItem && <div className="rowarea">{r.a}</div>}{linkifyLead(r.l)}
+                      {r.steps.length > 0 && <details className="steps">
+                        <summary>How to get it · {r.steps.length} steps</summary>
+                        <ol>{r.steps.map((t, i) => <li key={i}>{linkify(t)}</li>)}</ol>
+                      </details>}</>}
                     {r.edited && <><span className="edited">Edited</span>{editing && <button className="linkbtn undo" onClick={() => onUndo(r.n)}>Undo</button>}</>}
                     {r.stale && !editing && onReview && <button className="upchip" onClick={() => onReview(r.n)} title="There's new information for this spot. Tap to compare it with yours.">
                       New info

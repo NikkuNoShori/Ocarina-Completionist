@@ -21,6 +21,8 @@ export interface ItemRow {
   adult_first: boolean;
   item_group: string | null;
   photo_links: PhotoLink[];
+  /** Optional step-by-step instructions for long quests */
+  steps?: string[];
   /** When an admin last changed this row (null: unchanged since launch) */
   updated_at?: string | null;
 }
@@ -63,6 +65,7 @@ export interface EffRow {
   stale: boolean;
   /** All checklists view: the row's own number and which list it is from */
   dn?: number; tag?: string;
+  steps: string[];
 }
 
 export interface SaveFile { id: string; name: string; owner_id: string; updated_at: string; role: Role; owner_email?: string; /** checkmarks in this save */ done?: number }

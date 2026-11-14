@@ -833,3 +833,15 @@ a.wl:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radiu
   .apitem{padding:11px 8px;font-size:1rem}
   .apdone{padding:13px}
 }
+/* ---------- Step-by-step instructions on long quests ---------- */
+details.steps{margin-top:6px}
+details.steps summary{cursor:pointer;display:inline-flex;align-items:center;gap:6px;font:700 .8rem var(--body);color:var(--gold);list-style:none;padding:3px 0}
+details.steps summary::-webkit-details-marker{display:none}
+details.steps summary::before{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+details.steps[open] summary::before{transform:rotate(45deg)}
+details.steps summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+details.steps ol{margin:6px 0 2px;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;font-size:.9rem;line-height:1.45;color:var(--fg)}
+details.steps li::marker{color:var(--gold);font-weight:700}
+/* Steps stay readable on a checked-off row: an inline-block doesn't inherit the strike-through */
+details.steps{display:inline-block;width:100%}
+tr.done details.steps{color:var(--fg)}

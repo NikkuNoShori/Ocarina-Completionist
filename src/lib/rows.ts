@@ -52,6 +52,7 @@ export function eff(r: ItemRow, st: ListState): EffRow {
     af: o.af != null ? o.af === "1" : r.adult_first,
     group: r.item_group,
     links: r.photo_links ?? [],
+    steps: Array.isArray(r.steps) ? r.steps.filter(x => typeof x === "string") : [],
     edited: !!st.O[r.n],
     stale: isStale(r, st),
   };
