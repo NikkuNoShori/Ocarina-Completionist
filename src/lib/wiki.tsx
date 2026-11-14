@@ -37,6 +37,16 @@ const TERMS: Record<string, string | null> = {
   "Cucco Lady": "Anju", "Pocket Egg": "Pocket Egg", "Pocket Cucco": "Pocket Cucco", "Cojiro": "Cojiro", "Odd Mushroom": "Odd Mushroom",
   "Odd Poultice": null, "Poacher's Saw": "Poacher's Saw", "Broken Goron's Sword": null, "Prescription": "Prescription",
   "Eyeball Frog": "Eyeball Frog", "Eye Drops": null, "Claim Check": "Claim Check", "Blue Fire": "Blue Fire",
+  // Masks and the child trading quest
+  "Keaton Mask": "Keaton Mask", "Spooky Mask": "Spooky Mask", "Goron Mask": "Goron Mask", "Zora Mask": "Zora Mask",
+  "Gerudo Mask": "Gerudo Mask", "Weird Egg": "Weird Egg", "Happy Mask Shop": "Happy Mask Shop",
+  // Arrows, swords, cards
+  "Fire Arrows": "Fire Arrow", "Ice Arrows": "Ice Arrow", "Light Arrows": "Light Arrow",
+  "Giant's Knife": "Giant's Knife", "Gerudo Membership Card": "Gerudo Membership Card", "Double Defense": null,
+  // Spiritual Stones and Medallions
+  "Kokiri Emerald": "Kokiri's Emerald", "Goron Ruby": "Goron's Ruby", "Zora Sapphire": "Zora's Sapphire",
+  "Forest Medallion": "Forest Medallion", "Fire Medallion": "Fire Medallion", "Water Medallion": "Water Medallion",
+  "Shadow Medallion": "Shadow Medallion", "Spirit Medallion": "Spirit Medallion", "Light Medallion": "Light Medallion",
   // Everything else
   "Empty Bottle": "Empty Bottle", "Magic Bean": "Magic Bean", "Bug": "Bug", "Cuccos": "Cucco", "Cucco": "Cucco",
   "Epona": "Epona", "Rupees": "Rupee", "Gold Skulltula tokens": "Gold Skulltula Token",
